@@ -1,0 +1,34 @@
+# Raw market data (uploaded to HuggingFace instead)
+historic_tmax_market_data/
+
+# Generated parquet splits and results (reproducible from raw data)
+data/splits/
+data/diagnostics/
+diagnostics/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
+
+# Quarto render output (keep the .qmd source, not the rendered artefacts)
+reports/*.pdf
+reports/_files/
+_freeze/
+.quarto/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.env
+PAT/
