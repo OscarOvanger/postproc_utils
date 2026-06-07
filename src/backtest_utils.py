@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import re
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -94,6 +95,77 @@ def daily_returns(
         ) else returns.index
     returns.name = "daily_return"
     return returns
+
+
+def cumulative_pnl_plot(
+    results_dict: dict,
+    baseline_names: list[str],
+    title: str = "",
+    capital: float = 100.0,
+) -> plt.Figure:
+    """
+    Plot cumulative net PnL over time for selected baselines.
+
+    results_dict: {baseline_name: results_df}
+    Each results_df must have event_date and net_pnl_cents columns.
+    Days with no_signal are treated as zero PnL.
+    Returns matplotlib Figure without calling plt.show().
+    """
+    if capital == 0:
+        raise ValueError("capital must be non-zero")
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.4))
+    plotted = False
+    for baseline_name in baseline_names:
+        if baseline_name not in results_dict:
+            raise KeyError(f"Missing results for baseline: {baseline_name}")
+
+        results_df = results_dict[baseline_name].copy()
+        if results_df.empty:
+            continue
+        missing = {"event_date", "net_pnl_cents"}.difference(results_df.columns)
+        if missing:
+            raise ValueError(
+                f"{baseline_name} results missing required columns: {sorted(missing)}"
+            )
+
+        index_cols = _day_index_columns(results_df)
+        if "no_signal" in results_df.columns:
+            no_signal_mask = results_df["no_signal"].fillna(False).astype(bool)
+        else:
+            no_signal_mask = pd.Series(False, index=results_df.index)
+
+        pnl = pd.to_numeric(results_df["net_pnl_cents"], errors="coerce")
+        pnl = pnl.where(~no_signal_mask, 0.0).fillna(0.0)
+        daily_pnl = (
+            results_df.assign(_pnl=pnl)
+            .groupby(index_cols, sort=True)["_pnl"]
+            .sum()
+            .reset_index()
+        )
+        daily_pnl["event_date"] = pd.to_datetime(daily_pnl["event_date"])
+        daily_by_date = daily_pnl.groupby("event_date", sort=True)["_pnl"].sum()
+        cumulative = daily_by_date.cumsum() / capital
+        ax.plot(
+            cumulative.index.to_numpy(),
+            cumulative.to_numpy(),
+            marker="o",
+            linewidth=1.8,
+            markersize=3.0,
+            label=baseline_name.replace("_", " "),
+        )
+        plotted = True
+
+    ax.axhline(0, color="#8A8A8A", linestyle="--", linewidth=1)
+    ax.set_title(title)
+    ax.set_xlabel("Event date")
+    ax.set_ylabel(f"Cumulative net PnL / ${capital:0.0f}")
+    ax.grid(True, alpha=0.25)
+    if plotted:
+        ax.legend(fontsize=8)
+    fig.autofmt_xdate(rotation=30)
+    fig.tight_layout()
+    return fig
 
 
 def _n_trades_and_no_signal(results_df: pd.DataFrame) -> tuple[int, int]:
@@ -262,15 +334,18 @@ def sharpe_stats(returns: pd.Series) -> dict:
     stats["max_drawdown"] = float(drawdown.min())
 
     downside = values[values < 0]
-    if downside.shape[0] >= 1:
-        downside_std = float(np.sqrt((downside**2).mean()))
-        if downside_std > 0:
+    if downside.shape[0] > 0:
+        downside_std = float(downside.std(ddof=1))
+        if math.isfinite(downside_std) and downside_std > 0:
             stats["sortino_annual"] = float(mean_return / downside_std * annual_factor)
 
-    if std_return > 0:
+    if n_days >= 3:
         lag1 = values.autocorr(lag=1)
-        stats["lag1_autocorr"] = float(lag1) if lag1 is not None else nan
+        stats["lag1_autocorr"] = (
+            float(lag1) if lag1 is not None and math.isfinite(lag1) else nan
+        )
 
+    if std_return > 0:
         skewness = _sample_skew(values)
         excess_kurt = _sample_excess_kurtosis(values)
         stats["skewness"] = skewness
@@ -288,6 +363,69 @@ def sharpe_stats(returns: pd.Series) -> dict:
             )
 
     return stats
+
+
+def bootstrap_sharpe(
+    returns: pd.Series,
+    n_boot: int = 2000,
+    block_size: int | None = None,
+) -> dict:
+    """
+    Block bootstrap confidence interval on annualised Sharpe.
+
+    ``block_size`` defaults to ``max(1, int(sqrt(len(returns))))``. Uses a
+    circular block bootstrap: sample blocks with replacement, concatenate until
+    at least the original length, trim to exact length, and compute annualised
+    Sharpe on each bootstrap sample.
+    """
+    nan = float("nan")
+    values = pd.to_numeric(pd.Series(returns), errors="coerce").dropna().to_numpy(
+        dtype=float
+    )
+    n_obs = int(values.shape[0])
+    if block_size is None:
+        block_size = max(1, int(math.sqrt(n_obs))) if n_obs else 1
+    block_size = int(block_size)
+    if block_size < 1:
+        raise ValueError("block_size must be >= 1")
+    if n_boot < 1:
+        raise ValueError("n_boot must be >= 1")
+
+    result = {
+        "sharpe_boot_mean": nan,
+        "sharpe_boot_se": nan,
+        "sharpe_boot_ci_low": nan,
+        "sharpe_boot_ci_high": nan,
+        "n_boot": int(n_boot),
+        "block_size": block_size,
+    }
+    if n_obs < 2:
+        return result
+
+    rng = np.random.default_rng(0)
+    boot_values: list[float] = []
+    n_blocks = int(math.ceil(n_obs / block_size))
+    annual_factor = math.sqrt(TRADING_DAYS_PER_YEAR)
+
+    for _ in range(n_boot):
+        starts = rng.integers(0, n_obs, size=n_blocks)
+        sample_parts = [
+            values[(start + np.arange(block_size)) % n_obs] for start in starts
+        ]
+        sample = np.concatenate(sample_parts)[:n_obs]
+        sample_std = float(sample.std(ddof=1))
+        if sample_std > 0:
+            boot_values.append(float(sample.mean() / sample_std * annual_factor))
+
+    if not boot_values:
+        return result
+
+    boot = np.asarray(boot_values, dtype=float)
+    result["sharpe_boot_mean"] = float(np.mean(boot))
+    result["sharpe_boot_se"] = float(np.std(boot, ddof=1)) if boot.shape[0] > 1 else nan
+    result["sharpe_boot_ci_low"] = float(np.percentile(boot, 2.5))
+    result["sharpe_boot_ci_high"] = float(np.percentile(boot, 97.5))
+    return result
 
 
 def deflated_sharpe(returns: pd.Series, n_variants: int) -> dict:
@@ -336,6 +474,211 @@ def deflated_sharpe(returns: pd.Series, n_variants: int) -> dict:
         sr_hat, e_max_sr, n_days, skewness, excess_kurt
     )
     return result
+
+
+def _entry_time_column(results_df: pd.DataFrame) -> str:
+    if "entry_snapshot_time" in results_df.columns:
+        return "entry_snapshot_time"
+    if "entry_time" in results_df.columns:
+        return "entry_time"
+    if "crossing_snapshot_time" in results_df.columns:
+        return "crossing_snapshot_time"
+    raise ValueError(
+        "results_df must contain entry_snapshot_time, entry_time, or crossing_snapshot_time"
+    )
+
+
+def _datetime_join_key(values: pd.Series) -> pd.Series:
+    """Return timezone-normalized datetime keys for joining trade and market rows."""
+    return pd.to_datetime(values, utc=True, errors="coerce").dt.tz_convert(None)
+
+
+def bucket_decile_breakdown(
+    results_df: pd.DataFrame,
+    market_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Performance breakdown by the entry price of the bucket traded.
+
+    For each trade, look up ``yes_mid_close`` for the entered bucket at the
+    entry snapshot. NO-side longshot trades use the sold bucket's YES price as
+    the price axis.
+    """
+    decile_labels = [f"{i / 10:.1f}-{(i + 1) / 10:.1f}" for i in range(10)]
+    empty = pd.DataFrame(
+        {
+            "price_decile": decile_labels,
+            "n_trades": [0] * 10,
+            "win_rate": [float("nan")] * 10,
+            "mean_net_pnl_c": [float("nan")] * 10,
+            "sharpe": [float("nan")] * 10,
+        }
+    )
+    if results_df.empty:
+        return empty
+
+    entry_col = _entry_time_column(results_df)
+    required_results = {"event_date", "city", "bucket_label", entry_col, "net_pnl_cents"}
+    missing_results = required_results.difference(results_df.columns)
+    if missing_results:
+        raise ValueError(
+            f"results_df is missing required columns: {sorted(missing_results)}"
+        )
+    required_market = {
+        "event_date",
+        "bucket_label",
+        "snapshot_time_local",
+        "yes_mid_close",
+    }
+    missing_market = required_market.difference(market_df.columns)
+    if missing_market:
+        raise ValueError(
+            f"market_df is missing required columns: {sorted(missing_market)}"
+        )
+
+    trades = results_df.copy()
+    if "no_signal" in trades.columns:
+        trades = trades[~trades["no_signal"].fillna(False).astype(bool)].copy()
+    trades = trades.dropna(subset=[entry_col, "bucket_label"])
+    if trades.empty:
+        return empty
+
+    trades["_event_date_key"] = pd.to_datetime(trades["event_date"]).dt.date.astype(str)
+    trades["_entry_time_key"] = _datetime_join_key(trades[entry_col])
+    trades["_bucket_key"] = trades["bucket_label"].astype(str)
+    trades["_city_key"] = trades["city"].astype(str)
+
+    market = market_df.copy()
+    market["_event_date_key"] = pd.to_datetime(market["event_date"]).dt.date.astype(str)
+    market["_entry_time_key"] = _datetime_join_key(market["snapshot_time_local"])
+    market["_bucket_key"] = market["bucket_label"].astype(str)
+    if "city" in market.columns:
+        market["_city_key"] = market["city"].astype(str)
+    elif "source_city_folder" in market.columns:
+        market["_city_key"] = market["source_city_folder"].astype(str)
+    else:
+        raise ValueError("market_df must contain city or source_city_folder")
+
+    market_lookup = market[
+        [
+            "_city_key",
+            "_event_date_key",
+            "_entry_time_key",
+            "_bucket_key",
+            "yes_mid_close",
+        ]
+    ].drop_duplicates(
+        ["_city_key", "_event_date_key", "_entry_time_key", "_bucket_key"]
+    )
+
+    merged = trades.merge(
+        market_lookup,
+        on=["_city_key", "_event_date_key", "_entry_time_key", "_bucket_key"],
+        how="left",
+    )
+    merged["entry_yes_price"] = pd.to_numeric(
+        merged["yes_mid_close"], errors="coerce"
+    )
+    merged = merged.dropna(subset=["entry_yes_price"])
+    if merged.empty:
+        return empty
+
+    merged["price_decile"] = pd.cut(
+        merged["entry_yes_price"].clip(lower=0.0, upper=1.0),
+        bins=np.linspace(0.0, 1.0, 11),
+        labels=decile_labels,
+        include_lowest=True,
+        right=True,
+    )
+    merged["net_pnl_cents"] = pd.to_numeric(
+        merged["net_pnl_cents"], errors="coerce"
+    )
+    if "resolved_correctly" in merged.columns:
+        wins = merged["resolved_correctly"].astype("boolean")
+    else:
+        wins = merged["net_pnl_cents"] > 0
+    merged["_win"] = wins.astype(float)
+
+    rows: list[dict[str, object]] = []
+    for label in decile_labels:
+        decile = merged[merged["price_decile"].astype(str).eq(label)]
+        if decile.empty:
+            rows.append(
+                {
+                    "price_decile": label,
+                    "n_trades": 0,
+                    "win_rate": float("nan"),
+                    "mean_net_pnl_c": float("nan"),
+                    "sharpe": float("nan"),
+                }
+            )
+            continue
+        pnl = decile["net_pnl_cents"].dropna()
+        std = float(pnl.std(ddof=1)) if pnl.shape[0] >= 2 else float("nan")
+        sharpe = (
+            float(pnl.mean() / std * math.sqrt(TRADING_DAYS_PER_YEAR))
+            if math.isfinite(std) and std > 0
+            else float("nan")
+        )
+        rows.append(
+            {
+                "price_decile": label,
+                "n_trades": int(decile.shape[0]),
+                "win_rate": float(decile["_win"].mean()),
+                "mean_net_pnl_c": float(pnl.mean()) if not pnl.empty else float("nan"),
+                "sharpe": sharpe,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def is_oos_comparison(is_stats_csv: str, oos_stats_csv: str) -> pd.DataFrame:
+    """
+    Load IS and OOS full-stats CSVs and produce a side-by-side comparison.
+    """
+    is_stats = pd.read_csv(is_stats_csv)
+    oos_stats = pd.read_csv(oos_stats_csv)
+    required = {
+        "Baseline",
+        "Sharpe",
+        "Sharpe_CI_low",
+        "Sharpe_CI_high",
+        "PSR_0",
+        "N_trades",
+        "NoSignal_pct",
+    }
+    for name, frame in [("IS", is_stats), ("OOS", oos_stats)]:
+        missing = required.difference(frame.columns)
+        if missing:
+            raise ValueError(f"{name} stats CSV is missing columns: {sorted(missing)}")
+
+    merged = is_stats.merge(
+        oos_stats,
+        on="Baseline",
+        how="outer",
+        suffixes=("_IS", "_OOS"),
+    )
+    comparison = pd.DataFrame(
+        {
+            "Baseline": merged["Baseline"],
+            "IS_Sharpe": merged["Sharpe_IS"],
+            "IS_Sharpe_CI_low": merged["Sharpe_CI_low_IS"],
+            "IS_Sharpe_CI_high": merged["Sharpe_CI_high_IS"],
+            "OOS_Sharpe": merged["Sharpe_OOS"],
+            "OOS_Sharpe_CI_low": merged["Sharpe_CI_low_OOS"],
+            "OOS_Sharpe_CI_high": merged["Sharpe_CI_high_OOS"],
+            "IS_PSR0": merged["PSR_0_IS"],
+            "OOS_PSR0": merged["PSR_0_OOS"],
+            "IS_n_trades": merged["N_trades_IS"],
+            "OOS_n_trades": merged["N_trades_OOS"],
+            "IS_NoSig_pct": merged["NoSignal_pct_IS"],
+            "OOS_NoSig_pct": merged["NoSignal_pct_OOS"],
+        }
+    )
+    comparison["Sharpe_decay"] = (
+        comparison["IS_Sharpe"] - comparison["OOS_Sharpe"]
+    )
+    return comparison
 
 
 def full_stats_table(
@@ -400,6 +743,7 @@ def full_stats_table(
                 "SR_deflated": deflated["sr_deflated"],
                 "MaxDrawdown": stats["max_drawdown"],
                 "Sortino": stats["sortino_annual"],
+                "Lag1_autocorr": stats["lag1_autocorr"],
                 "Fee_drag_pct": fee_drag_pct,
             }
         )
