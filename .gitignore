@@ -5,6 +5,12 @@ historic_tmax_market_data/
 data/splits/
 data/diagnostics/
 diagnostics/
+data/trackj/raw/
+
+# Large Track-J model artifacts
+models/trackj/**/*.pkl
+models/trackj/**/*.joblib
+models/trackj/**/modeling_table_*.parquet
 
 # Python
 __pycache__/

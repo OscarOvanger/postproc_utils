@@ -805,3 +805,53 @@ def print_summary_table(
     print(f"  Max drawdown        : {stats['max_drawdown']:0.4f}")
     print(f"  Fee drag (fees/gross): {fee_drag:0.4f}")
     print(line)
+
+
+def disagreement_diagnostic(results_df: pd.DataFrame) -> dict:
+    """
+    Compute Track-J vs market disagreement statistics.
+
+    `results_df` must have: agrees_with_market, resolved_correctly,
+    net_pnl_cents, no_signal columns.
+    """
+    required = {"agrees_with_market", "resolved_correctly", "net_pnl_cents", "no_signal"}
+    missing = required.difference(results_df.columns)
+    if missing:
+        raise ValueError(f"results_df is missing required columns: {sorted(missing)}")
+
+    trades = results_df[~results_df["no_signal"].fillna(False).astype(bool)].copy()
+    trades["agrees_with_market"] = trades["agrees_with_market"].astype(bool)
+    trades["resolved_correctly"] = trades["resolved_correctly"].astype(bool)
+    trades["net_pnl_cents"] = pd.to_numeric(trades["net_pnl_cents"], errors="coerce")
+
+    agree = trades[trades["agrees_with_market"]]
+    disagree = trades[~trades["agrees_with_market"]]
+
+    def win_rate(frame: pd.DataFrame) -> float:
+        return float(frame["resolved_correctly"].mean()) if not frame.empty else float("nan")
+
+    def mean_pnl(frame: pd.DataFrame) -> float:
+        return float(frame["net_pnl_cents"].mean()) if not frame.empty else float("nan")
+
+    def sharpe(frame: pd.DataFrame) -> float:
+        if frame.empty:
+            return float("nan")
+        return float(sharpe_stats(daily_returns(frame))["sharpe_annual"])
+
+    total_pnl = float(trades["net_pnl_cents"].sum()) if not trades.empty else 0.0
+    disagree_pnl = float(disagree["net_pnl_cents"].sum()) if not disagree.empty else 0.0
+    pct_pnl_from_disagree = (
+        100.0 * disagree_pnl / total_pnl if total_pnl != 0 else float("nan")
+    )
+
+    return {
+        "n_agree": int(agree.shape[0]),
+        "n_disagree": int(disagree.shape[0]),
+        "win_rate_agree": win_rate(agree),
+        "win_rate_disagree": win_rate(disagree),
+        "mean_pnl_agree": mean_pnl(agree),
+        "mean_pnl_disagree": mean_pnl(disagree),
+        "pct_pnl_from_disagree": pct_pnl_from_disagree,
+        "sharpe_agree": sharpe(agree),
+        "sharpe_disagree": sharpe(disagree),
+    }
