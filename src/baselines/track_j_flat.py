@@ -33,6 +33,13 @@ def _date_key(value: object) -> str:
     return pd.to_datetime(value).strftime("%Y-%m-%d")
 
 
+def _fee_probability_units(contracts: float, price: float) -> float:
+    """Convert total cent fees into per-contract price/probability units."""
+    if contracts <= 0:
+        raise ValueError("contracts must be positive")
+    return float(taker_fee(contracts, price)) / (100.0 * contracts)
+
+
 def _resolved_correctly(day_df: pd.DataFrame, bucket_label: str) -> bool:
     entry_rows = day_df[day_df["bucket_label"].astype(str).eq(str(bucket_label))]
     if entry_rows.empty:
@@ -125,11 +132,14 @@ def evaluate_track_j_flat(
     k: int,
     order_type: str = "taker",
     contracts: float = 1.0,
+    min_edge_fee_multiple: float = 2.0,
+    min_entry_price: float = 0.15,
 ) -> pd.DataFrame:
     """
     Evaluate Track-J flat over each city-date in the partition.
 
-    Missing Track-J forecasts remain explicit no_signal rows.
+    Missing forecasts, weak edge, or below-floor entry prices remain explicit
+    no_signal rows. PnL and fee accounting are unchanged for traded rows.
     """
     if order_type != "taker":
         raise ValueError("track_j_flat currently supports order_type='taker'")
@@ -194,6 +204,30 @@ def evaluate_track_j_flat(
 
         resolved_correctly = _resolved_correctly(day_df, signal.bucket_label)
         entry_price = float(signal.entry_price)
+        edge = float(signal.signal_value) - entry_price
+        fee_probability = _fee_probability_units(contracts, entry_price)
+        if edge < float(min_edge_fee_multiple) * fee_probability or entry_price < float(min_entry_price):
+            records.append(
+                {
+                    "event_date": signal.event_date,
+                    "city": _city_key(city),
+                    "entry_time": pd.NaT,
+                    "bucket_label": "",
+                    "side": signal.side,
+                    "entry_price": np.nan,
+                    "signal_value": np.nan,
+                    "no_signal": True,
+                    "gross_pnl_cents": np.nan,
+                    "fee_cents": np.nan,
+                    "net_pnl_cents": np.nan,
+                    "resolved_correctly": np.nan,
+                    "track_j_tmax_f": track_j_tmax_f,
+                    "market_modal_bucket": market_modal_bucket,
+                    "agrees_with_market": np.nan,
+                }
+            )
+            continue
+
         gross_pnl_cents = 100.0 * contracts * ((1.0 if resolved_correctly else 0.0) - entry_price)
         net = net_pnl(gross_pnl_cents, C=contracts, P=entry_price, order_type=order_type)
         records.append(
