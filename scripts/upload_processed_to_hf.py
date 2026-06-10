@@ -43,6 +43,9 @@ def _upload_files() -> list[tuple[Path, str]]:
     nws = PROJECT_ROOT / "data" / "trackb" / "nws_forecasts_raw.parquet"
     if nws.exists():
         files.append((nws, "data/trackb/nws_forecasts_raw.parquet"))
+    openmeteo = PROJECT_ROOT / "data" / "trackb" / "openmeteo_nwp_raw.parquet"
+    if openmeteo.exists():
+        files.append((openmeteo, "data/trackb/openmeteo_nwp_raw.parquet"))
     for partition in ("threshold_opt", "time_holdout", "location_holdout", "true_holdout"):
         local = PROJECT_ROOT / "data" / "splits" / f"{partition}.parquet"
         if local.exists():

@@ -31,7 +31,8 @@ ASOS_FEATURES = 9
 CALENDAR_LAG_FEATURES = 9
 NWS_FEATURES = 2
 GFS_FEATURES = 3
-EXPECTED_FEATURES = ASOS_FEATURES + CALENDAR_LAG_FEATURES + NWS_FEATURES + GFS_FEATURES
+NWP_BEST_FEATURES = 2
+EXPECTED_FEATURES = ASOS_FEATURES + CALENDAR_LAG_FEATURES + NWS_FEATURES + GFS_FEATURES + NWP_BEST_FEATURES
 
 
 def _check(label: str, ok: bool, blockers: list[str]) -> None:
@@ -108,7 +109,18 @@ def main() -> None:
     for flag in gfs_flags:
         print(f"      FLAG: {flag}")
     _check("NWS MAE < 4°F for all cities (or flagged)", mae_ok, blockers)
-    _check(f"All cities have {EXPECTED_FEATURES} features (4 groups active)", feature_count_ok, blockers)
+    nwp_ok = True
+    for city in TRAIN_CITIES:
+        path = TRACKB_DIR / city / "features.parquet"
+        if not path.exists():
+            continue
+        features = pd.read_parquet(path)
+        nwp_cov = 100.0 * features.get("nwp_tmax_best_f", pd.Series(dtype=float)).notna().mean()
+        if nwp_cov < 95.0:
+            nwp_ok = False
+            blockers.append(f"{city} NWP best coverage {nwp_cov:.1f}% < 95%")
+    _check("All cities have >= 95% nwp_tmax_best_f coverage", nwp_ok, blockers)
+    _check(f"All cities have {EXPECTED_FEATURES} features (5 groups active)", feature_count_ok, blockers)
     _check("No leakage assertions failed during feature table build", leakage_ok, blockers)
 
     print("\nData splits:")
