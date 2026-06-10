@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from datetime import date
@@ -28,15 +29,23 @@ END_DATE = date(2026, 6, 9)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Fetch NWS Tmax forecasts for all train cities.")
+    parser.add_argument(
+        "--force-refresh",
+        action="store_true",
+        help="Re-extract all city-dates ignoring checkpoint resume.",
+    )
+    args = parser.parse_args()
     config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     dates = pd.date_range(START_DATE, END_DATE, freq="D").strftime("%Y-%m-%d")
     forecasts = fetch_nws_tmax_forecast_batch(
         config,
         dates,
         issued_before_hour=22,
-        output_path=DEFAULT_OUTPUT_PATH,
+        output_path=PROJECT_ROOT / "data" / "trackb" / "nws_forecasts_raw.parquet",
         sleep_seconds=1.0,
         checkpoint_every=50,
+        force_refresh=args.force_refresh,
     )
     print_coverage_table(forecasts, config, trackj_dir=PROJECT_ROOT / "data" / "trackj")
 

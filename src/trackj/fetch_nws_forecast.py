@@ -37,6 +37,8 @@ TRAIN_CITIES = [
 ]
 NBE_START = date(2020, 7, 23)
 NBS_START = date(2018, 11, 7)
+# Evening NBE/NBS issuance cycles (00Z/01Z target date, 19Z previous day, etc.)
+EVENING_RUN_HOURS_UTC = {0, 1, 19, 20, 21, 22, 23}
 
 
 def make_session() -> requests.Session:
@@ -92,6 +94,15 @@ def _fetch_iem_mos_table(station: str, model: str, start_dt: datetime, end_dt: d
     return frame.dropna(subset=["runtime", "ftime"])
 
 
+def _select_mos_runtime(day_rows: pd.DataFrame, midnight_rows: pd.DataFrame) -> pd.Timestamp | None:
+    """Pick latest evening-cycle runtime with midnight ftime, else latest any midnight runtime."""
+    if midnight_rows.empty:
+        return None
+    evening_midnight = midnight_rows[midnight_rows["runtime"].dt.hour.isin(EVENING_RUN_HOURS_UTC)]
+    pool = evening_midnight if not evening_midnight.empty else midnight_rows
+    return pool["runtime"].max()
+
+
 def _extract_tmax_from_mos(frame: pd.DataFrame, target_date: date, issued_before: datetime) -> dict | None:
     if frame.empty or "txn" not in frame.columns:
         return None
@@ -104,10 +115,12 @@ def _extract_tmax_from_mos(frame: pd.DataFrame, target_date: date, issued_before
     if day_rows.empty:
         return None
     midnight_rows = day_rows[day_rows["ftime"].dt.hour.eq(0)]
-    selection = midnight_rows if not midnight_rows.empty else day_rows
-    latest_runtime = selection["runtime"].max()
-    latest_day = selection[selection["runtime"].eq(latest_runtime)].sort_values("ftime")
-    row = latest_day.iloc[0]
+    latest_runtime = _select_mos_runtime(day_rows, midnight_rows)
+    if latest_runtime is None:
+        latest_runtime = day_rows["runtime"].max()
+    latest_day = day_rows[day_rows["runtime"].eq(latest_runtime)].sort_values("ftime")
+    midnight_latest = latest_day[latest_day["ftime"].dt.hour.eq(0)]
+    row = midnight_latest.iloc[0] if not midnight_latest.empty else latest_day.iloc[0]
     tmax = pd.to_numeric(row.get("txn"), errors="coerce")
     if pd.isna(tmax):
         afternoon = latest_day[latest_day["ftime"].dt.hour.ge(12)]
@@ -238,6 +251,7 @@ def fetch_nws_tmax_forecast_batch(
     output_path: Path = DEFAULT_OUTPUT_PATH,
     sleep_seconds: float = 1.0,
     checkpoint_every: int = 50,
+    force_refresh: bool = False,
 ) -> pd.DataFrame:
     """Fetch NWS Tmax forecasts for train cities and target dates with resume support."""
     dates = sorted(pd.to_datetime(pd.Series(target_dates).dropna().drop_duplicates()).dt.date.tolist())
@@ -245,7 +259,10 @@ def fetch_nws_tmax_forecast_batch(
         return pd.DataFrame()
     session = make_session()
     existing = _load_checkpoint(output_path)
-    if not existing.empty:
+    if force_refresh:
+        done = set()
+        rows = []
+    elif not existing.empty:
         success_mask = existing["tmax_forecast_f"].notna()
         done = set(zip(existing.loc[success_mask, "city"], existing.loc[success_mask, "date"]))
         rows = existing.loc[success_mask].to_dict("records")
@@ -360,4 +377,7 @@ def print_coverage_table(
     for _, row in summary.iterrows():
         if row["2021-2024 coverage %"] < 50.0:
             print(f"FLAG: {row['City']} has <50% NWS coverage for 2021-2024; use Groups 1-2 only for training.")
+        mae_val = row["Mean abs error vs actual Tmax"]
+        if mae_val is not None and mae_val == mae_val and mae_val > 4.0:
+            print(f"WARNING: {row['City']} NWS MAE {mae_val}°F exceeds 4°F; possible IEM data quality issue for this station.")
     return summary
