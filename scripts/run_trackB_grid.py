@@ -281,23 +281,31 @@ def _size_contracts(
 def run_backtest(
     signals: pd.DataFrame,
     sizer: str,
+    calendar_dates: list[str] | None = None,
 ) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
-    """Apply sizer, compute trade PnL and bankroll path."""
+    """Apply sizer, compute trade PnL and bankroll path.
+
+    Daily returns include all calendar dates in ``calendar_dates``; days with
+    no trades contribute 0 PnL and 0 return (Method C).
+    """
     traded = signals[~signals["no_signal"]].copy()
-    if traded.empty:
+    if calendar_dates is None:
+        calendar_dates = (
+            sorted(traded["event_date"].unique()) if not traded.empty else []
+        )
+    if not calendar_dates:
         empty = np.array([], dtype=float)
         return traded, empty, empty, np.array([INITIAL_BANKROLL_CENTS], dtype=float)
 
     traded = traded.sort_values(["event_date", "city"]).reset_index(drop=True)
-    dates = sorted(traded["event_date"].unique())
     bankroll = INITIAL_BANKROLL_CENTS
     bankroll_path = [bankroll]
     daily_pnl_list: list[float] = []
     daily_return_list: list[float] = []
     trade_records: list[dict[str, object]] = []
 
-    for event_date in dates:
-        day_trades = traded[traded["event_date"].eq(event_date)]
+    for event_date in calendar_dates:
+        day_trades = traded[traded["event_date"].eq(event_date)] if not traded.empty else traded
         opening_bankroll = bankroll
         daily_spent = 0
         day_pnl = 0.0
@@ -355,7 +363,7 @@ def compute_stats(
 ) -> dict[str, object]:
     """Full stats for one combination."""
     n = len(daily_returns)
-    if n == 0 or np.std(daily_returns) == 0:
+    if n == 0 or np.std(daily_returns, ddof=1) == 0:
         sr_daily = 0.0
         sr_annual = 0.0
         se_sr = float("nan")
@@ -363,13 +371,14 @@ def compute_stats(
         ci_hi = float("nan")
         sortino = 0.0
     else:
-        sr_daily = float(np.mean(daily_returns) / np.std(daily_returns))
+        std_return = float(np.std(daily_returns, ddof=1))
+        sr_daily = float(np.mean(daily_returns) / std_return)
         sr_annual = sr_daily * np.sqrt(252)
         se_sr = np.sqrt((1 + 0.5 * sr_annual**2) / n)
         ci_lo = sr_annual - 1.96 * se_sr
         ci_hi = sr_annual + 1.96 * se_sr
         downside = daily_returns[daily_returns < 0]
-        downside_std = np.std(downside) if len(downside) > 0 else 1e-6
+        downside_std = np.std(downside, ddof=1) if len(downside) > 0 else 1e-6
         sortino = float(np.mean(daily_returns) / downside_std * np.sqrt(252))
 
     peak = np.maximum.accumulate(bankroll_path)
@@ -419,16 +428,26 @@ def _calendar_days(partition_df: pd.DataFrame) -> int:
     return max(1, int((dates.max() - dates.min()).days) + 1)
 
 
+def _calendar_date_keys(partition_df: pd.DataFrame) -> list[str]:
+    """All calendar dates from first to last event_date in the partition."""
+    dates = pd.to_datetime(partition_df["event_date"].dropna().unique())
+    if len(dates) == 0:
+        return []
+    all_dates = pd.date_range(dates.min(), dates.max(), freq="D")
+    return [d.strftime("%Y-%m-%d") for d in all_dates]
+
+
 def resolve_edge_threshold(
     is_signals: pd.DataFrame,
     oos_signals: pd.DataFrame,
+    oos_dates: list[str],
     sizer: str = "flat_5",
 ) -> float:
     """Calibrate E* on IS; lower by 10% until OOS has >= 90 trades."""
     threshold = calibrate_edge_threshold(is_signals)
     for _ in range(20):
         oos_sel = apply_selection(oos_signals.copy(), "edge_threshold", threshold)
-        trades, _, _, _ = run_backtest(oos_sel, sizer)
+        trades, _, _, _ = run_backtest(oos_sel, sizer, oos_dates)
         if len(trades) >= 90:
             return threshold
         threshold *= 0.9
@@ -443,6 +462,8 @@ def run_grid(
     """Run all 18 combinations on IS and OOS."""
     is_calendar = _calendar_days(threshold_opt)
     oos_calendar = _calendar_days(time_holdout)
+    is_dates = _calendar_date_keys(threshold_opt)
+    oos_dates = _calendar_date_keys(time_holdout)
 
     signal_cache: dict[tuple[str, str], pd.DataFrame] = {}
     for signal in SIGNALS:
@@ -454,6 +475,7 @@ def run_grid(
     e_star_final = resolve_edge_threshold(
         signal_cache[("track_b_flat", "IS")],
         signal_cache[("track_b_flat", "OOS")],
+        oos_dates,
     )
 
     rows_is: list[dict[str, object]] = []
@@ -468,8 +490,8 @@ def run_grid(
         is_sel = apply_selection(is_signals, selection, threshold)
         oos_sel = apply_selection(oos_signals, selection, threshold)
 
-        is_trades, is_returns, is_pnl, is_bankroll = run_backtest(is_sel, sizer)
-        oos_trades, oos_returns, oos_pnl, oos_bankroll = run_backtest(oos_sel, sizer)
+        is_trades, is_returns, is_pnl, is_bankroll = run_backtest(is_sel, sizer, is_dates)
+        oos_trades, oos_returns, oos_pnl, oos_bankroll = run_backtest(oos_sel, sizer, oos_dates)
 
         combo_key = f"{signal}|{sizer}|{selection}"
         trade_paths[combo_key] = oos_trades
@@ -557,11 +579,14 @@ def run_selection_curve(
         time_holdout, forecasts, "track_b_flat", exclude_cities=LOW_OOS_COVERAGE_CITIES
     )
     calendar_days = _calendar_days(time_holdout)
+    oos_dates = _calendar_date_keys(time_holdout)
     rows: list[dict[str, object]] = []
 
     for threshold in np.arange(0.0, 0.2005, 0.005):
         selected = apply_selection(base_signals.copy(), "edge_threshold", float(threshold))
-        trades, daily_returns, daily_pnl, bankroll_path = run_backtest(selected, "flat_5")
+        trades, daily_returns, daily_pnl, bankroll_path = run_backtest(
+            selected, "flat_5", oos_dates
+        )
         stats = compute_stats(
             daily_returns,
             daily_pnl,
