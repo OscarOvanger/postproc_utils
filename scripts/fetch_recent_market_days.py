@@ -34,6 +34,25 @@ TRAIN_SLUGS = {
 
 
 def _load_codex():
+    import sys
+    import types
+
+    if "zoneinfo" not in sys.modules:
+        try:
+            from backports.zoneinfo import ZoneInfo  # type: ignore
+        except ImportError:
+            from dateutil.tz import gettz
+
+            def ZoneInfo(name: str):
+                tz = gettz(name)
+                if tz is None:
+                    raise ValueError(f"Unknown timezone: {name}")
+                return tz
+
+        zoneinfo_mod = types.ModuleType("zoneinfo")
+        zoneinfo_mod.ZoneInfo = ZoneInfo
+        sys.modules["zoneinfo"] = zoneinfo_mod
+
     spec = importlib.util.spec_from_file_location("codex_fetch", CODEX_FETCH)
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load {CODEX_FETCH}")
@@ -59,7 +78,7 @@ def _load_existing_rows(path: Path) -> tuple[list[str], list[dict]]:
 
 
 def fetch_city_dates(
-    codex, city: dict, start: date, end: date, merge_each: bool = True
+    codex, city: dict, start: date, end: date, merge_each: bool = True, paper_live: bool = False
 ) -> list[dict]:
     """Fetch market rows for one city between start and end (inclusive)."""
     from zoneinfo import ZoneInfo
@@ -92,10 +111,20 @@ def fetch_city_dates(
             print(f"    skip: nws_fetch_failed: {exc}")
             continue
         if not nws:
-            print("    skip: no_exact_nws_cli_record")
-            continue
-
-        tmax_dt = nws["tmax_time_local"]
+            if not paper_live:
+                print("    skip: no_exact_nws_cli_record")
+                continue
+            tmax_dt = datetime.combine(d, dtime(16, 0), tzinfo=tz)
+            nws = {
+                "tmax_f": None,
+                "tmax_time_local": tmax_dt,
+                "station_text": "",
+                "report_issue_utc": None,
+                "product_id": "",
+                "report_excerpt_maximum": "",
+            }
+        else:
+            tmax_dt = nws["tmax_time_local"]
         market_opens = [
             codex.parse_kalshi_dt(m.get("open_time")).astimezone(tz)
             for m in markets_by_date[d]
@@ -123,12 +152,14 @@ def fetch_city_dates(
             print(f"    skip: kalshi_fetch_failed: {exc}")
             continue
 
-        winning = [m for m in markets if codex.bucket_contains(m, nws["tmax_f"])]
-        if len(winning) != 1:
+        winning = [m for m in markets if codex.bucket_contains(m, nws["tmax_f"])] if nws.get("tmax_f") is not None else []
+        if nws.get("tmax_f") is not None and len(winning) != 1:
             print(f"    skip: winning_bucket_count_{len(winning)}")
             continue
-        winning_market = winning[0]
-        _, winning_label, _, _, _, _ = codex.bucket_metadata(winning_market)
+        winning_market = winning[0] if winning else {}
+        winning_label = ""
+        if winning_market:
+            _, winning_label, _, _, _, _ = codex.bucket_metadata(winning_market)
 
         day_rows: list[dict] = []
         has_count = 0
@@ -161,7 +192,7 @@ def fetch_city_dates(
                     if candle_ts
                     else None
                 )
-                is_winning = m["ticker"] == winning_market["ticker"]
+                is_winning = bool(winning_market) and m["ticker"] == winning_market["ticker"]
                 day_rows.append(
                     {
                         "event_date": d.isoformat(),

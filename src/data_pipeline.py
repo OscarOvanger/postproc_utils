@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
 
@@ -127,9 +127,10 @@ def fetch_asos_morning(
     city: str,
     event_date: str,
     cutoff_hour_local: int = 10,
+    skip_cache: bool = False,
 ) -> Optional[Dict[str, float]]:
     """Fetch ASOS morning observations up to 10AM local."""
-    row = _feature_table_row(city, event_date)
+    row = None if skip_cache else _feature_table_row(city, event_date)
     if row is not None:
         result = _extract_columns(row, ASOS_MORNING_COLUMNS)
         if result:
@@ -157,24 +158,49 @@ def fetch_asos_morning(
         return None
 
 
-def fetch_nws_forecast(city: str, event_date: str) -> Optional[float]:
+def fetch_nws_forecast(
+    city: str,
+    event_date: str,
+    skip_cache: bool = False,
+) -> Optional[float]:
     """Fetch NWS MOS Tmax forecast issued the evening before event_date."""
-    row = _feature_table_row(city, event_date)
+    result = fetch_nws_forecast_full(city, event_date, skip_cache=skip_cache)
+    return result["nws_tmax_forecast_f"] if result else None
+
+
+def fetch_nws_forecast_full(
+    city: str,
+    event_date: str,
+    skip_cache: bool = False,
+) -> Optional[Dict[str, float]]:
+    """Fetch NWS MOS Tmax forecast and issuance lag in hours."""
+    row = None if skip_cache else _feature_table_row(city, event_date)
     if row is not None and "nws_tmax_forecast_f" in row.index:
         val = row["nws_tmax_forecast_f"]
+        issued_h = row.get("nws_tmax_forecast_issued_h")
         if pd.notna(val):
-            return float(val)
+            payload = {"nws_tmax_forecast_f": float(val)}
+            if pd.notna(issued_h):
+                payload["nws_tmax_forecast_issued_h"] = float(issued_h)
+            return payload
 
-    nws_path = NWS_RAW_PATH
-    if nws_path.exists():
+    if not skip_cache:
+        nws_path = NWS_RAW_PATH
+    else:
+        nws_path = None
+    if nws_path is not None and nws_path.exists():
         frame = pd.read_parquet(nws_path)
         city_rows = frame[frame["city"].astype(str).eq(city)].copy()
         city_rows["date_key"] = pd.to_datetime(city_rows["date"], errors="coerce").dt.strftime("%Y-%m-%d")
         match = city_rows[city_rows["date_key"] == str(event_date)]
         if not match.empty:
             val = match.iloc[0].get("tmax_forecast_f")
+            hours = match.iloc[0].get("hours_since_issuance")
             if pd.notna(val):
-                return float(val)
+                payload = {"nws_tmax_forecast_f": float(val)}
+                if pd.notna(hours):
+                    payload["nws_tmax_forecast_issued_h"] = float(hours)
+                return payload
 
     try:
         cfg = _load_city_config(city)
@@ -195,15 +221,23 @@ def fetch_nws_forecast(city: str, event_date: str) -> Optional[float]:
         if pd.notna(issued) and issued >= cutoff:
             print(f"  NWS leakage guard: issuance {issued} >= 10AM local on {event_date}")
             return None
-        return float(result["tmax_forecast_f"])
+        payload = {"nws_tmax_forecast_f": float(result["tmax_forecast_f"])}
+        hours = result.get("hours_since_issuance")
+        if hours is not None and pd.notna(hours):
+            payload["nws_tmax_forecast_issued_h"] = float(hours)
+        return payload
     except Exception as exc:
         print(f"  NWS fetch failed for {city}/{event_date}: {exc}")
         return None
 
 
-def fetch_gfs_afternoon(city: str, event_date: str) -> Optional[Dict[str, float]]:
+def fetch_gfs_afternoon(
+    city: str,
+    event_date: str,
+    skip_cache: bool = False,
+) -> Optional[Dict[str, float]]:
     """Fetch GFS afternoon forecast fields (00Z cycle)."""
-    row = _feature_table_row(city, event_date)
+    row = None if skip_cache else _feature_table_row(city, event_date)
     if row is not None:
         result = _extract_columns(row, GFS_FEATURE_COLUMNS)
         if len(result) == 3:
@@ -252,15 +286,19 @@ def _nwp_from_openmeteo_cache(city: str, event_date: str) -> tuple[float | None,
     return None, None
 
 
-def fetch_nwp_best(city: str, event_date: str) -> Optional[float]:
+def fetch_nwp_best(
+    city: str,
+    event_date: str,
+    skip_cache: bool = False,
+) -> Optional[float]:
     """Fetch best-available NWP Tmax forecast (ECMWF priority, GFS fallback)."""
-    row = _feature_table_row(city, event_date)
+    row = None if skip_cache else _feature_table_row(city, event_date)
     if row is not None and "nwp_tmax_best_f" in row.index:
         val = row["nwp_tmax_best_f"]
         if pd.notna(val):
             return float(val)
 
-    cached, issued = _nwp_from_openmeteo_cache(city, event_date)
+    cached, issued = (None, None) if skip_cache else _nwp_from_openmeteo_cache(city, event_date)
     if cached is not None:
         if issued is not None and issued >= str(event_date):
             print(f"  NWP leakage guard: issued_date {issued} >= {event_date}")
@@ -297,9 +335,13 @@ def fetch_nwp_best(city: str, event_date: str) -> Optional[float]:
         return None
 
 
-def fetch_lag_features(city: str, event_date: str) -> Optional[Dict[str, float]]:
+def fetch_lag_features(
+    city: str,
+    event_date: str,
+    skip_cache: bool = False,
+) -> Optional[Dict[str, float]]:
     """Compute temperature lag features from historical CLI data."""
-    row = _feature_table_row(city, event_date)
+    row = None if skip_cache else _feature_table_row(city, event_date)
     if row is not None:
         result = _extract_columns(row, LAG_COLUMNS)
         if result:
@@ -392,6 +434,60 @@ def build_feature_vector(city: str, event_date: str) -> Optional[Dict[str, float
         return None
 
     return features
+
+
+def build_feature_vector_strict(
+    city: str,
+    event_date: str,
+    required_columns: list[str] | None = None,
+) -> Tuple[Optional[Dict[str, float]], str]:
+    """Build a live feature vector; fail if any source is missing."""
+    features: dict[str, float] = {}
+    failures: list[str] = []
+
+    asos = fetch_asos_morning(city, event_date, skip_cache=True)
+    if asos:
+        features.update(asos)
+    else:
+        failures.append("missing ASOS obs")
+
+    lags = fetch_lag_features(city, event_date, skip_cache=True)
+    if lags:
+        features.update(lags)
+    else:
+        failures.append("missing lag features")
+
+    nws = fetch_nws_forecast_full(city, event_date, skip_cache=True)
+    if nws:
+        features.update(nws)
+    else:
+        failures.append("missing NWS MOS")
+
+    gfs = fetch_gfs_afternoon(city, event_date, skip_cache=True)
+    if gfs and len(gfs) == 3:
+        features.update(gfs)
+    else:
+        failures.append("missing GFS afternoon covariates")
+
+    nwp = fetch_nwp_best(city, event_date, skip_cache=True)
+    if nwp is not None:
+        features["nwp_tmax_best_f"] = nwp
+    else:
+        failures.append("missing NWP best Tmax")
+
+    if failures:
+        return None, "; ".join(failures)
+
+    if required_columns:
+        missing_cols = [
+            col
+            for col in required_columns
+            if col not in features or pd.isna(features.get(col))
+        ]
+        if missing_cols:
+            return None, f"missing model features: {', '.join(missing_cols)}"
+
+    return features, ""
 
 
 def run_leakage_audit(city: str, event_date: str, features: Dict[str, float]) -> bool:
