@@ -45,9 +45,9 @@ class RawProduct:
 
 
 def make_session() -> requests.Session:
-    retry = Retry(total=5, connect=5, read=5, backoff_factor=1.0, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",))
+    retry = Retry(total=2, connect=2, read=2, backoff_factor=0.5, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",))
     session = requests.Session()
-    session.headers.update({"User-Agent": "mcp-trackj-cli-target/1.0"})
+    session.headers.update({"User-Agent": "MCP_trading_research oscar@utexas.edu"})
     session.mount("https://", HTTPAdapter(max_retries=retry))
     return session
 
@@ -109,7 +109,7 @@ def fetch_cli_range(city_config: dict, start_date: date, end_date: date, raw_dir
     session = make_session()
     saved_all = []
     for batch_start, batch_end in month_ranges(start_date, end_date):
-        response = session.get(IEM_RETRIEVE_URL, params={"pil": pil, "center": wfo, "sdate": batch_start.strftime("%Y-%m-%d %H:%M"), "edate": batch_end.strftime("%Y-%m-%d %H:%M"), "limit": "9999", "fmt": "text", "order": "asc"}, timeout=60)
+        response = session.get(IEM_RETRIEVE_URL, params={"pil": pil, "center": wfo, "sdate": batch_start.strftime("%Y-%m-%d %H:%M"), "edate": batch_end.strftime("%Y-%m-%d %H:%M"), "limit": "9999", "fmt": "text", "order": "asc"}, timeout=10)
         response.raise_for_status()
         products = split_products(response.text, pil)
         rows = save_products(products, raw_dir, batch_start, batch_end, pil, overwrite=overwrite)

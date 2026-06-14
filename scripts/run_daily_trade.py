@@ -5,11 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 import time
 from datetime import date, datetime, time as dtime
 from pathlib import Path
 from typing import Any
+
+os.environ.setdefault("TRACKJ_SKIP_HF_SYNC", "1")
 
 import joblib
 import numpy as np
@@ -38,7 +41,7 @@ except ModuleNotFoundError:
 
 from build_splits import discover_city_csvs, load_city_frame  # noqa: E402
 from fetch_recent_market_days import TRAIN_SLUGS, _load_codex, fetch_city_dates  # noqa: E402
-from src.data_pipeline import build_feature_vector_strict, fetch_kalshi_snapshot  # noqa: E402
+from src.data_pipeline import _load_cli_target, build_feature_vector_strict, fetch_kalshi_snapshot  # noqa: E402
 from src.entry_interface import filter_to_trading_window  # noqa: E402
 from src.fees import taker_fee  # noqa: E402
 from src.kalshi_api import place_order  # noqa: E402
@@ -193,6 +196,13 @@ def fetch_forecast(
 ) -> tuple[dict[str, int], dict[str, str], dict[str, str]]:
     """Generate Track-B ensemble forecasts for all cities."""
     print("\n--- fetch_forecast ---")
+    print("  Pre-warming CLI history for lag features...")
+    for city in config["cities"]:
+        try:
+            _load_cli_target(city, event_date)
+        except Exception as exc:
+            print(f"    CLI pre-warm failed for {city}: {exc}")
+
     model_dir = PROJECT_ROOT / config["model_dir"]
     forecasts: dict[str, int] = {}
     reasons: dict[str, str] = {}

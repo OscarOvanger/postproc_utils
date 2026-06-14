@@ -42,9 +42,9 @@ EVENING_RUN_HOURS_UTC = {0, 1, 19, 20, 21, 22, 23}
 
 
 def make_session() -> requests.Session:
-    retry = Retry(total=5, connect=5, read=5, backoff_factor=1.0, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",))
+    retry = Retry(total=2, connect=2, read=2, backoff_factor=0.5, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",))
     session = requests.Session()
-    session.headers.update({"User-Agent": "mcp-trackj-nws-forecast/1.0 (research)"})
+    session.headers.update({"User-Agent": "MCP_trading_research oscar@utexas.edu"})
     session.mount("https://", HTTPAdapter(max_retries=retry))
     return session
 
@@ -79,7 +79,7 @@ def _fetch_iem_mos_table(station: str, model: str, start_dt: datetime, end_dt: d
         "day2": end_dt.day,
         "hour2": end_dt.hour,
     }
-    response = session.get(IEM_MOS_URL, params=params, timeout=90)
+    response = session.get(IEM_MOS_URL, params=params, timeout=10)
     response.raise_for_status()
     text = response.text.strip()
     if not text or text.upper().startswith("ERROR"):
@@ -139,14 +139,14 @@ def _extract_tmax_from_mos(frame: pd.DataFrame, target_date: date, issued_before
 
 
 def _fetch_live_nws_tmax(lat: float, lon: float, target_date: date, issued_before: datetime, session: requests.Session) -> dict | None:
-    response = session.get(NWS_POINTS_URL.format(lat=lat, lon=lon), timeout=60, allow_redirects=True)
+    response = session.get(NWS_POINTS_URL.format(lat=lat, lon=lon), timeout=10, allow_redirects=True)
     if response.status_code >= 400:
         return None
     payload = response.json()
     forecast_url = payload.get("properties", {}).get("forecast")
     if not forecast_url:
         return None
-    forecast_response = session.get(forecast_url, timeout=60)
+    forecast_response = session.get(forecast_url, timeout=10)
     forecast_response.raise_for_status()
     periods = forecast_response.json().get("properties", {}).get("periods", [])
     target_str = target_date.isoformat()

@@ -115,12 +115,41 @@ def _load_cli_target(city: str, event_date: str) -> pd.DataFrame:
     cfg = _load_city_config(city)
     cli_path = TRACKJ_DIR / city / "cli_target.parquet"
     target = _parse_event_date(event_date)
+    need_through = target - timedelta(days=1)
     lag_start = target - timedelta(days=45)
+
+    existing: pd.DataFrame | None = None
     if cli_path.exists():
-        cli = pd.read_parquet(cli_path)
-        cli["date"] = pd.to_datetime(cli["date"], errors="coerce").dt.strftime("%Y-%m-%d")
-        return cli
-    return fetch_cli_target(cfg, lag_start, target, RAW_DIR, TRACKJ_DIR, no_fetch=False)
+        existing = pd.read_parquet(cli_path)
+        existing["date"] = pd.to_datetime(existing["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        valid_dates = existing["date"].dropna()
+        max_date = valid_dates.max()
+        min_date = valid_dates.min()
+        has_recent = bool(max_date) and pd.Timestamp(max_date) >= pd.Timestamp(need_through.isoformat())
+        has_history = bool(min_date) and pd.Timestamp(min_date) <= pd.Timestamp(lag_start.isoformat())
+        if has_recent and has_history:
+            return existing
+        if not has_history:
+            fetch_start = lag_start
+        elif max_date:
+            fetch_start = pd.Timestamp(max_date).date() + timedelta(days=1)
+        else:
+            fetch_start = lag_start
+    else:
+        fetch_start = lag_start
+
+    if existing is not None and fetch_start > lag_start:
+        refreshed = fetch_cli_target(cfg, fetch_start, target, RAW_DIR, TRACKJ_DIR, no_fetch=False)
+        combined = pd.concat([existing, refreshed], ignore_index=True)
+    else:
+        refreshed = fetch_cli_target(cfg, lag_start, target, RAW_DIR, TRACKJ_DIR, no_fetch=False)
+        combined = refreshed
+
+    combined = combined.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+    combined = combined[combined["date"] >= lag_start.isoformat()].copy()
+    cli_path.parent.mkdir(parents=True, exist_ok=True)
+    combined.to_parquet(cli_path, index=False)
+    return combined
 
 
 def fetch_asos_morning(
@@ -139,20 +168,35 @@ def fetch_asos_morning(
     cfg = _load_city_config(city)
     target = _parse_event_date(event_date)
     city_raw_dir = RAW_DIR / city
-    cli = _load_cli_target(city, event_date)
 
     try:
-        fetch_asos_range(cfg, target, target, city_raw_dir, overwrite=False)
+        fetch_asos_range(cfg, target, target, city_raw_dir, overwrite=skip_cache)
         asos = load_cached_asos(city_raw_dir, cfg["nws_station"], target, target)
         if asos.empty:
+            print(f"  ASOS fetch failed for {city}/{event_date}: no cached rows")
+            return None
+        day_rows = asos[asos["date"].astype(str) == str(event_date)].copy()
+        if day_rows.empty:
+            print(f"  ASOS fetch failed for {city}/{event_date}: no observations for {event_date}")
             return None
         if cutoff_hour_local != 10:
-            asos = asos[asos["valid_local"].dt.hour <= cutoff_hour_local].copy()
-        aggregated = aggregate_morning_asos(asos, [event_date], target_df=cli)
+            day_rows = day_rows[day_rows["valid_local"].dt.hour <= cutoff_hour_local].copy()
+        morning_rows = day_rows[
+            (day_rows["valid_local"].dt.time >= datetime.strptime("00:00", "%H:%M").time())
+            & (day_rows["valid_local"].dt.time <= datetime.strptime("10:00", "%H:%M").time())
+        ]
+        if morning_rows.empty:
+            print(f"  ASOS fetch failed for {city}/{event_date}: no 00:00-10:00 local observations")
+            return None
+        aggregated = aggregate_morning_asos(asos, [event_date], target_df=None)
         if aggregated.empty:
             return None
         result = _extract_columns(aggregated.iloc[0], ASOS_MORNING_COLUMNS)
-        return result or None
+        if len(result) < len(ASOS_MORNING_COLUMNS):
+            missing = set(ASOS_MORNING_COLUMNS) - set(result)
+            print(f"  ASOS fetch failed for {city}/{event_date}: missing fields {sorted(missing)}")
+            return None
+        return result
     except Exception as exc:
         print(f"  ASOS fetch failed for {city}/{event_date}: {exc}")
         return None

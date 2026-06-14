@@ -20,15 +20,15 @@ LIVE_CUTOFF_DAYS = 7
 
 def make_session() -> requests.Session:
     retry = Retry(
-        total=5,
-        connect=5,
-        read=5,
-        backoff_factor=1.0,
+        total=2,
+        connect=2,
+        read=2,
+        backoff_factor=0.5,
         status_forcelist=(429, 500, 502, 503, 504),
         allowed_methods=("GET",),
     )
     session = requests.Session()
-    session.headers.update({"User-Agent": "mcp-trackj-openmeteo-nwp/1.0 (research)"})
+    session.headers.update({"User-Agent": "MCP_trading_research oscar@utexas.edu"})
     session.mount("https://", HTTPAdapter(max_retries=retry))
     return session
 
@@ -85,7 +85,7 @@ def _fetch_openmeteo_range(
         "temperature_unit": "fahrenheit",
     }
     try:
-        response = session.get(base_url, params=params, timeout=120)
+        response = session.get(base_url, params=params, timeout=10)
         response.raise_for_status()
         payload = response.json()
     except requests.RequestException as exc:

@@ -32,10 +32,14 @@ ASOS_FEATURE_COLUMNS = [
 ]
 
 
+HTTP_USER_AGENT = "MCP_trading_research oscar@utexas.edu"
+LIVE_FETCH_TIMEOUT_SECONDS = 10
+
+
 def make_session() -> requests.Session:
-    retry = Retry(total=5, connect=5, read=5, backoff_factor=1.0, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",))
+    retry = Retry(total=2, connect=2, read=2, backoff_factor=0.5, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",))
     session = requests.Session()
-    session.headers.update({"User-Agent": "mcp-trackj-asos-features/1.0"})
+    session.headers.update({"User-Agent": HTTP_USER_AGENT})
     session.mount("https://", HTTPAdapter(max_retries=retry))
     return session
 
@@ -79,12 +83,18 @@ def fetch_asos_range(city_config: dict, start_date: date, end_date: date, raw_di
                 ("year2", str(end_dt.year)), ("month2", str(end_dt.month)), ("day2", str(end_dt.day)), ("hour2", "0"), ("minute2", "0"),
             ]
             params.extend(("data", field) for field in ASOS_FIELDS)
-            response = session.get(IEM_ASOS_URL, params=params, timeout=90)
+            response = session.get(IEM_ASOS_URL, params=params, timeout=LIVE_FETCH_TIMEOUT_SECONDS)
             response.raise_for_status()
             path.write_text(response.text, encoding="utf-8")
+            row_count = max(response.text.count("\n") - 1, 0)
+            print(
+                f"ASOS {city_config['city']} {month_start:%Y-%m}: fetched {row_count} rows "
+                f"from {response.url}"
+            )
             fetched = True
         paths.append(path)
-        print(f"ASOS {city_config['city']} {month_start:%Y-%m}: cached {path}")
+        if not fetched:
+            print(f"ASOS {city_config['city']} {month_start:%Y-%m}: cached {path}")
         if fetched and sleep_seconds > 0:
             time.sleep(sleep_seconds)
     return paths
