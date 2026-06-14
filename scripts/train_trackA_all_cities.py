@@ -238,7 +238,7 @@ def main() -> None:
                 "Model": row["Model"],
                 "Sigma": row["sigma_f"],
                 "+/-1F hit rate": row["hit_rate_1f"],
-                "N Kalshi days covered": n_covered,
+                "N market days covered": n_covered,
             }
         )
     austin = forecasts[forecasts["city"].eq("austin")]
@@ -249,7 +249,7 @@ def main() -> None:
             "Model": "track_j",
             "Sigma": _load_config().get("austin", {}).get("sigma_f", np.nan),
             "+/-1F hit rate": 0.591,
-            "N Kalshi days covered": int(austin["city_coverage_flag"].sum()),
+            "N market days covered": int(austin["city_coverage_flag"].sum()),
         },
     )
     if rows:

@@ -127,7 +127,7 @@ def fetch_market(
     config: dict[str, Any],
     event_date: str,
 ) -> tuple[pd.DataFrame, dict[str, str]]:
-    """Pull Kalshi bucket snapshots for all cities."""
+    """Pull market bucket snapshots for all cities."""
     if not _wait_for_market_open(event_date):
         raise SystemExit("Markets not available pre-open")
 
@@ -454,7 +454,7 @@ def daily_risk_report(
 
     if mode == "paper":
         print("\n** PAPER MODE — no orders placed **")
-        print("** To place manually: review edges above, enter on Kalshi UI **")
+        print("** To place manually: review edges above, enter on exchange UI **")
     print("===")
 
 

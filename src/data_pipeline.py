@@ -571,7 +571,7 @@ def fetch_kalshi_snapshot(
     event_date: str,
     market_df: Optional[pd.DataFrame] = None,
 ) -> Optional[pd.DataFrame]:
-    """Fetch the 10AM Kalshi market snapshot for a city-date."""
+    """Fetch the 10AM market snapshot for a city-date."""
     if market_df is None:
         return None
 

@@ -28,7 +28,7 @@ def make_session() -> requests.Session:
         allowed_methods=("GET",),
     )
     session = requests.Session()
-    session.headers.update({"User-Agent": "MCP_trading_research oscar@utexas.edu"})
+    session.headers.update({"User-Agent": "postproc_utils/1.0 (research)"})
     session.mount("https://", HTTPAdapter(max_retries=retry))
     return session
 

@@ -1,4 +1,4 @@
-"""Fetch and append Kalshi market data for a specific date range.
+"""Fetch and append market data for a specific date range.
 
 Wraps the Codex fetch module but only pulls requested dates and merges
 into existing per-city CSVs instead of overwriting the full history.
@@ -87,7 +87,7 @@ def fetch_city_dates(
     markets_by_date, _, _, _ = codex.load_kalshi_markets(city["series"])
     target_dates = {d for d in markets_by_date if start <= d <= end}
     if not target_dates:
-        print(f"  {city['slug']}: no Kalshi markets in range")
+        print(f"  {city['slug']}: no markets in range")
         return []
 
     text_cache: dict = {}

@@ -1,4 +1,4 @@
-"""Kalshi fee utilities for backtesting Tmax bucket trades."""
+"""Exchange fee utilities for backtesting Tmax bucket trades."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ import math
 
 
 def taker_fee(C: float, P: float) -> float:
-    """Kalshi taker fee in cents. C = contracts, P = yes_mid_close."""
+    """Exchange taker fee in cents. C = contracts, P = yes_mid_close."""
     return math.ceil(0.07 * C * P * (1 - P))
 
 
 def maker_fee(C: float, P: float) -> float:
-    """Kalshi maker fee in cents (since April 2025, ~1/4 of taker)."""
+    """Exchange maker fee in cents (since April 2025, ~1/4 of taker)."""
     return math.ceil(0.0175 * C * P * (1 - P))
 
 
@@ -32,12 +32,12 @@ def net_pnl(
 
 
 def _raw_taker_fee(C: float, P: float) -> float:
-    """Return the unrounded Kalshi taker fee in cents."""
+    """Return the unrounded exchange taker fee in cents."""
     return 0.07 * C * P * (1 - P)
 
 
 def _raw_maker_fee(C: float, P: float) -> float:
-    """Return the unrounded Kalshi maker fee in cents."""
+    """Return the unrounded exchange maker fee in cents."""
     return 0.0175 * C * P * (1 - P)
 
 

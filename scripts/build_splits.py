@@ -1,4 +1,4 @@
-"""Build train/test parquet splits from raw Kalshi Tmax CSV exports."""
+"""Build train/test parquet splits from raw Tmax CSV exports."""
 
 from __future__ import annotations
 

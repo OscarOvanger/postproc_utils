@@ -1,4 +1,4 @@
-"""Compare NWS MOS vs best-available NWP MAE on 2026 Kalshi dates."""
+"""Compare NWS MOS vs best-available NWP MAE on 2026 market dates."""
 
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def main() -> None:
             }
         )
         if improvement == improvement and improvement <= 0:
-            print(f"NOTE: {city} NWP best did not improve over NWS MOS on 2026 Kalshi dates.")
+            print(f"NOTE: {city} NWP best did not improve over NWS MOS on 2026 market dates.")
 
     summary = pd.DataFrame(rows)
     print("\n=== 2026 KALSHI NWP MAE COMPARISON ===")

@@ -1,1 +1,1 @@
-"""Model interfaces used by Kalshi entry rules."""
+"""Model interfaces used by market entry rules."""

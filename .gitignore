@@ -38,3 +38,44 @@ Thumbs.db
 .env
 *.env
 PAT/
+
+# === SENSITIVE: never commit to public repo ===
+# Trading configuration (contains edge thresholds, sigmas, etc.)
+config/deploy_config.json
+config/city_config.json
+config/frozen_params.json
+config/frozen_k.json
+
+# Trained model artifacts
+models/trackb/
+models/trackj/
+
+# API keys and environment
+.env.*
+*.secret
+
+# Trade logs and results
+logs/
+logs/**
+
+# Data splits (contain holdout partitions)
+data/splits/
+data/splits/**
+
+# Raw market data (proprietary)
+data/raw/
+data/raw/**
+
+# Track-B feature tables
+data/trackb/
+data/trackb/**
+
+# Any parquet files in data/
+data/**/*.parquet
+
+# Research reports and strategy documentation
+reports/
+reports/**
+*.pdf
+docs/
+DATA_README.md

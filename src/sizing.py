@@ -100,7 +100,7 @@ def has_edge(p: float, c: float, fee: float) -> bool:
 
 
 def taker_fee_cents(contracts: int, price: float) -> int:
-    """Kalshi taker fee in cents."""
+    """Exchange taker fee in cents."""
     return math.ceil(0.07 * contracts * price * (1 - price))
 
 

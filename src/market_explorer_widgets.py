@@ -1,4 +1,4 @@
-"""Interactive widgets for exploring Kalshi Tmax market snapshots."""
+"""Interactive widgets for exploring Tmax market snapshots."""
 
 from __future__ import annotations
 

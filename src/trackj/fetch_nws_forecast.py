@@ -44,7 +44,7 @@ EVENING_RUN_HOURS_UTC = {0, 1, 19, 20, 21, 22, 23}
 def make_session() -> requests.Session:
     retry = Retry(total=2, connect=2, read=2, backoff_factor=0.5, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",))
     session = requests.Session()
-    session.headers.update({"User-Agent": "MCP_trading_research oscar@utexas.edu"})
+    session.headers.update({"User-Agent": "postproc_utils/1.0 (research)"})
     session.mount("https://", HTTPAdapter(max_retries=retry))
     return session
 

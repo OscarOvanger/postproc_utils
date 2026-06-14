@@ -1,1 +1,1 @@
-"""Baseline trading strategies for the Kalshi Tmax backtesting workspace."""
+"""Baseline trading strategies for the Tmax backtesting workspace."""

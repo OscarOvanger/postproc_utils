@@ -32,7 +32,7 @@ ASOS_FEATURE_COLUMNS = [
 ]
 
 
-HTTP_USER_AGENT = "MCP_trading_research oscar@utexas.edu"
+HTTP_USER_AGENT = "postproc_utils/1.0 (research)"
 LIVE_FETCH_TIMEOUT_SECONDS = 10
 
 

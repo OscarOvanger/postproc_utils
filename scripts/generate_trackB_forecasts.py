@@ -1,4 +1,4 @@
-"""Generate Track-B ensemble forecasts for Kalshi IS and OOS partitions."""
+"""Generate Track-B ensemble forecasts for IS and OOS partitions."""
 
 from __future__ import annotations
 
