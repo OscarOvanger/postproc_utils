@@ -105,7 +105,7 @@ This repo contains the trading strategy code for a statistical post-processing p
 
 | File | Description |
 |------|-------------|
-| `report.md` | Pointer to research log |
+| `research_log.pdf` | Rendered research log (Quarto PDF) |
 | `repo_structure.md` | This file |
 | `pipeline_flowchart.md` | End-to-end daily trading pipeline |
 | `week3_plan.md` | Current week's operational plan |
