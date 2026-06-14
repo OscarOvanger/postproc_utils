@@ -73,6 +73,11 @@ data/trackb/**
 # Any parquet files in data/
 data/**/*.parquet
 
+# Validation and backtest result artifacts
+data/fresh_validation/
+data/market_lean/
+data/track_j/
+
 # Research reports and strategy documentation
 reports/
 reports/**
