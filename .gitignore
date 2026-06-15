@@ -79,8 +79,11 @@ data/market_lean/
 data/track_j/
 
 # Research reports and strategy documentation
-reports/
 reports/**
+!reports/research_log.qmd
+!reports/mcp_simulation_summary.json
+!reports/figures/
+!reports/figures/**
 *.pdf
 !ctx/*.pdf
 docs/
