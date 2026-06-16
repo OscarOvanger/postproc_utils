@@ -379,6 +379,42 @@ def fetch_nwp_best(
         return None
 
 
+def _asos_daily_max(city: str, target_date: date) -> float | None:
+    """Fetch ASOS daily max temperature for a single date as CLI fallback."""
+    cfg = _load_city_config(city)
+    city_raw_dir = RAW_DIR / city
+    try:
+        fetch_asos_range(cfg, target_date, target_date, city_raw_dir, overwrite=False)
+        asos = load_cached_asos(city_raw_dir, cfg["nws_station"], target_date, target_date)
+        if asos.empty:
+            return None
+        day_rows = asos[asos["date"].astype(str) == str(target_date)]
+        if day_rows.empty:
+            fetch_asos_range(cfg, target_date, target_date, city_raw_dir, overwrite=True)
+            asos = load_cached_asos(city_raw_dir, cfg["nws_station"], target_date, target_date)
+            day_rows = asos[asos["date"].astype(str) == str(target_date)]
+        if day_rows.empty:
+            return None
+        tmpf = pd.to_numeric(day_rows["tmpf"], errors="coerce").dropna()
+        if tmpf.empty:
+            return None
+        daily_max = float(tmpf.max())
+        if daily_max < -30 or daily_max > 140:
+            print(f"  ASOS daily max {daily_max}F rejected for {city}/{target_date}")
+            return None
+        return daily_max
+    except Exception as exc:
+        print(f"  ASOS daily max fetch failed for {city}/{target_date}: {exc}")
+        return None
+
+
+def _cli_tmax_valid(cli: pd.DataFrame, check_str: str) -> bool:
+    row = cli[cli["date"].astype(str) == check_str]
+    if row.empty:
+        return False
+    return pd.notna(pd.to_numeric(row.iloc[0]["tmax_f"], errors="coerce"))
+
+
 def fetch_lag_features(
     city: str,
     event_date: str,
@@ -395,6 +431,29 @@ def fetch_lag_features(
         cli = _load_cli_target(city, event_date)
         if cli.empty:
             return None
+
+        target = _parse_event_date(event_date)
+        cli_dates = set(cli["date"].astype(str))
+        for lag_days in range(1, 8):
+            check_date = target - timedelta(days=lag_days)
+            check_str = check_date.strftime("%Y-%m-%d")
+            if _cli_tmax_valid(cli, check_str):
+                continue
+            asos_max = _asos_daily_max(city, check_date)
+            if asos_max is not None:
+                print(f"  CLI fallback: using ASOS max {asos_max:.0f}F for {city}/{check_str}")
+                cli = cli[cli["date"].astype(str) != check_str]
+                new_row = pd.DataFrame({"date": [check_str], "tmax_f": [asos_max]})
+                cli = pd.concat([cli, new_row], ignore_index=True)
+                cli = cli.sort_values("date").drop_duplicates(subset=["date"], keep="first")
+                cli_dates.add(check_str)
+
+        event_str = target.strftime("%Y-%m-%d")
+        if event_str not in set(cli["date"].astype(str)):
+            new_row = pd.DataFrame({"date": [event_str], "tmax_f": [float("nan")]})
+            cli = pd.concat([cli, new_row], ignore_index=True)
+            cli = cli.sort_values("date").drop_duplicates(subset=["date"], keep="first")
+
         calendar = build_calendar_lag_features(cli)
         match = calendar[calendar["date"].astype(str) == str(event_date)]
         if match.empty:
