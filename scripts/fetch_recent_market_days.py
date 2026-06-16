@@ -78,7 +78,13 @@ def _load_existing_rows(path: Path) -> tuple[list[str], list[dict]]:
 
 
 def fetch_city_dates(
-    codex, city: dict, start: date, end: date, merge_each: bool = True, paper_live: bool = False
+    codex,
+    city: dict,
+    start: date,
+    end: date,
+    merge_each: bool = True,
+    paper_live: bool = False,
+    force_refresh: bool = False,
 ) -> list[dict]:
     """Fetch market rows for one city between start and end (inclusive)."""
     from zoneinfo import ZoneInfo
@@ -101,10 +107,11 @@ def fetch_city_dates(
     for d in sorted(target_dates, reverse=True):
         if d > datetime.now(tz).date():
             continue
-        if d.isoformat() in existing_dates:
+        if not force_refresh and d.isoformat() in existing_dates:
             print(f"  {city['slug']}: skip {d} (already in CSV)")
             continue
-        print(f"  {city['slug']}: fetching {d}", flush=True)
+        action = "refreshing" if d.isoformat() in existing_dates else "fetching"
+        print(f"  {city['slug']}: {action} {d}", flush=True)
         try:
             nws = codex.best_cli_record(city["pil"], d, tz, text_cache)
         except Exception as exc:

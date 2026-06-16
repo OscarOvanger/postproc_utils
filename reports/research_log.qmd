@@ -1109,6 +1109,8 @@ python scripts/settle_daily.py --date YYYY-MM-DD
 
 This fetches CLI Tmax, computes net PnL per trade, and appends to `logs/settlements.jsonl`.
 
+Intraday exit monitoring runs every 5 minutes during market hours via `scripts/market_monitor.py` (see Section 9.5).
+
 ## Paper Trading Results
 
 The 60-day measurement clock does not start until the first live trade. Paper trading validates the pipeline under real-time conditions without risking capital.
@@ -1116,9 +1118,10 @@ The 60-day measurement clock does not start until the first live trade. Paper tr
 | Date | N trades | N wins | PnL (cents) | Cumulative PnL | Notes |
 |------|----------|--------|-------------|----------------|-------|
 | 2026-06-14 | 0 | 0 | 0 | 0 | Day 1: 0/9 coverage (fixed) |
-| 2026-06-15 | 3 | pending | pending | pending | 5/9 coverage; 3 trades placed |
+| 2026-06-15 | 3 | pending | pending | pending | 5/9 coverage; settlement pending (CLI not posted at settle time) |
+| 2026-06-16 | pending | pending | pending | pending | Pipeline run in progress; settlement pending |
 
-Settlement for 2026-06-15 is pending: NWS CLI Tmax was not yet posted for Houston, Oklahoma City, or New York City at settlement time. Re-run `settle_daily.py` once CLI data is available.
+Settlement for 2026-06-15 is pending: NWS CLI Tmax was not yet posted for Houston, Oklahoma City, or New York City at settlement time. Re-run `settle_daily.py` once CLI data is available. Settlement for 2026-06-16 is likewise pending.
 
 Oscar placed a small manual trade on the Houston 84--85F bucket (4.87 contracts at 50.92c) as a real-money test of the pipeline. Houston's actual Tmax was 82F; the trade lost \$2.48. This was a personal trade, not part of the paper trail.
 
@@ -1296,3 +1299,12 @@ On OOS data, **profit\_target\_15c** achieves the highest Sharpe (11.85, CI 7.58
 ## Caveats
 
 Intraday exits assume taker execution at `yes_mid_close` on both entry and exit, doubling fee drag relative to hold-to-settlement. The backtest uses historical snapshots; live execution may face wider spreads and partial fills. Results are sensitive to the 15c profit target and 10c trailing-stop parameters, which were not optimised on OOS data.
+
+## Intraday Exit Monitor
+
+Based on OOS results (Table \ref{tbl-intraday-exit}), **profit\_target\_15c** is deployed as the primary exit rule via `scripts/market_monitor.py`, running every 5 minutes during market hours (10:00--23:00 CT). Secondary rules: `profit_target_model` and `stop_loss_10c`. v1 logs signals to `logs/exit_signals.jsonl` and sends Pushover alerts when configured; manual exit on the Kalshi UI is expected until live API execution is enabled.
+
+```bash
+# Cron example (Mon--Sat, every 5 min during market hours):
+*/5 10-23 * * 1-6 cd ~/MCP_Project && python scripts/market_monitor.py
+```
