@@ -82,6 +82,7 @@ data/track_j/
 reports/**
 !reports/research_log.qmd
 !reports/mcp_simulation_summary.json
+!reports/intraday_exit_summary.csv
 !reports/figures/
 !reports/figures/**
 *.pdf

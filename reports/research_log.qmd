@@ -1115,7 +1115,12 @@ The 60-day measurement clock does not start until the first live trade. Paper tr
 
 | Date | N trades | N wins | PnL (cents) | Cumulative PnL | Notes |
 |------|----------|--------|-------------|----------------|-------|
-| 2026-06-14 | 0 | 0 | 0 | 0 | Day 1 dry run; initial 0/9 coverage traced to stale ASOS monthly cache + missing CLI bootstrap (HF sync blocking). Fixed same day: live fetch now refreshes ASOS/CLI; post-fix verification 5/9 cities with full feature vectors (Austin temp\_10am=83°F, NWS=92°F). Remaining gaps are NWS CLI holes (Jun 7 LA/PHX/SFO; Jun 11--12 PHL). |
+| 2026-06-14 | 0 | 0 | 0 | 0 | Day 1: 0/9 coverage (fixed) |
+| 2026-06-15 | 3 | pending | pending | pending | 5/9 coverage; 3 trades placed |
+
+Settlement for 2026-06-15 is pending: NWS CLI Tmax was not yet posted for Houston, Oklahoma City, or New York City at settlement time. Re-run `settle_daily.py` once CLI data is available.
+
+Oscar placed a small manual trade on the Houston 84--85F bucket (4.87 contracts at 50.92c) as a real-money test of the pipeline. Houston's actual Tmax was 82F; the trade lost \$2.48. This was a personal trade, not part of the paper trail.
 
 ## Week 3 Plan
 
@@ -1206,3 +1211,88 @@ The simulation passes 5/6 MCP go/no-go criteria. The sole failure is win rate (4
 ## Caveats
 
 This simulation uses historical market data and assumes taker execution at yes\_mid\_close. Live trading will face additional frictions: execution slippage, order book depth limits, and latency between signal generation and order placement. The backtest period of 27 days is shorter than the full 60-day evaluation, so projected trade counts and Sharpe estimates carry wider uncertainty than the point estimates suggest.
+
+# Intraday Exit Analysis
+
+## Motivation
+
+Kalshi allows selling YES contracts before settlement, enabling profit-taking when the market converges to the model and loss-cutting via stop-losses. The Jun 14 Austin paper run illustrated the value of early exit when the market reprices toward the forecast; the Jun 15 Houston manual trade (held through settlement on a forecast bust) showed the cost of not exiting intraday.
+
+## Method
+
+We backtest six exit rules on the frozen deploy configuration (track\_b\_flat, flat\_5, edge\_threshold $E^* = 0.037$) using grid-matched entry logic and 5-minute snapshot walk-forward. Rules: hold-to-settlement (baseline, 1× taker fee), profit-target-at-model, fixed 15c profit target, 10c trailing stop, 2:00 PM local time stop, and a combined rule (first of the three intraday triggers). Intraday exits pay 2× taker fees (entry + exit).
+
+## Results
+
+Table \ref{tbl-intraday-exit} summarises OOS (time\_holdout) performance by exit rule.
+
+```{python}
+#| label: tbl-intraday-exit
+#| output: asis
+exit_summary = pd.read_csv(REPORT_DIR / "intraday_exit_summary.csv")
+oos = exit_summary.loc[exit_summary["split"].eq("time_holdout")].copy()
+oos = oos.sort_values("sharpe_annual", ascending=False)
+display = oos[
+    [
+        "exit_rule",
+        "n_trades",
+        "win_rate",
+        "total_pnl_cents",
+        "sharpe_annual",
+        "sharpe_ci_lo",
+        "sharpe_ci_hi",
+        "pct_fell_through_to_settlement",
+    ]
+].copy()
+display["exit_rule"] = display["exit_rule"].map(latex_escape)
+display["win_rate"] = display["win_rate"].map(lambda v: latex_escape(f"{v:.1%}"))
+display["total_pnl_cents"] = display["total_pnl_cents"].map(lambda v: latex_escape(f"{v:.0f}"))
+display["sharpe_annual"] = display["sharpe_annual"].map(lambda v: latex_escape(f"{v:.2f}"))
+display["sharpe_ci_lo"] = display["sharpe_ci_lo"].map(lambda v: latex_escape(f"{v:.2f}"))
+display["sharpe_ci_hi"] = display["sharpe_ci_hi"].map(lambda v: latex_escape(f"{v:.2f}"))
+display["pct_fell_through_to_settlement"] = display["pct_fell_through_to_settlement"].map(
+    lambda v: latex_escape(f"{v:.1f}%")
+)
+display["n_trades"] = display["n_trades"].map(lambda v: latex_escape(str(int(v))))
+display = display.rename(
+    columns={
+        "exit_rule": "Exit rule",
+        "n_trades": "N trades",
+        "win_rate": "Win rate",
+        "total_pnl_cents": "Total PnL (c)",
+        "sharpe_annual": "Sharpe",
+        "sharpe_ci_lo": "CI lo",
+        "sharpe_ci_hi": "CI hi",
+        "pct_fell_through_to_settlement": "Fell through",
+    }
+)
+table_latex = latex_table(
+    display,
+    caption="Intraday exit rule comparison on the OOS (time\\_holdout) partition.",
+    label="tbl-intraday-exit",
+    column_format="lrrrrrrr",
+)
+readable = table_latex.replace(
+    r"\begin{tabular}",
+    r"\begingroup" "\n" r"\footnotesize" "\n"
+    r"\setlength{\tabcolsep}{3pt}" "\n"
+    r"\renewcommand{\arraystretch}{1.1}" "\n"
+    r"\begin{tabular}",
+)
+readable = readable.replace(r"\end{tabular}", r"\end{tabular}" "\n" r"\endgroup")
+print(readable)
+```
+
+Figure \ref{fig-intraday-exit-sharpe} compares annualised Sharpe ratios across exit rules.
+
+![Sharpe ratio comparison across intraday exit rules with 95\\% confidence intervals.](figures/intraday_exit_comparison.png){#fig-intraday-exit-sharpe width=100%}
+
+Figure \ref{fig-intraday-exit-cumulative} shows cumulative PnL paths.
+
+![Cumulative net PnL by exit rule across the combined IS+OOS backtest window.](figures/intraday_exit_cumulative.png){#fig-intraday-exit-cumulative width=100%}
+
+On OOS data, **profit\_target\_15c** achieves the highest Sharpe (11.85, CI 7.58--16.12) versus hold-to-settlement (10.47, CI 6.69--14.25), with a higher win rate (74.5\% vs 49.0\%) but lower total PnL (\$24.83 vs \$28.51) due to early profit-taking and double fees. **profit\_target\_model** ranks second on Sharpe (9.12) with 52.9\% of trades falling through to settlement. Trailing-stop and combined rules underperform hold-to-settlement on OOS Sharpe.
+
+## Caveats
+
+Intraday exits assume taker execution at `yes_mid_close` on both entry and exit, doubling fee drag relative to hold-to-settlement. The backtest uses historical snapshots; live execution may face wider spreads and partial fills. Results are sensitive to the 15c profit target and 10c trailing-stop parameters, which were not optimised on OOS data.
