@@ -32,6 +32,7 @@ CLOB_HOST = "https://clob.polymarket.com"
 GAMMA_API = "https://gamma-api.polymarket.com"
 CHAIN_ID = 137
 SIGNATURE_TYPE = 3  # POLY_1271 deposit-wallet signing
+POLYMARKET_WEATHER_FEE_RATE = 0.05
 
 TRAIN_SLUGS = {
     "austin",
@@ -78,6 +79,20 @@ EVENT_TITLE_RE = re.compile(
 BUCKET_FROM_QUESTION_RE = re.compile(
     r"(?i)be (.+?) on [A-Za-z]+ \d{1,2}"
 )
+
+
+def polymarket_taker_fee(
+    n_contracts: int,
+    price: float,
+    fee_rate: float = POLYMARKET_WEATHER_FEE_RATE,
+) -> float:
+    """Polymarket taker fee in dollars. Makers pay zero."""
+    return round(n_contracts * fee_rate * price * (1 - price), 5)
+
+
+def polymarket_maker_fee(n_contracts: int, price: float) -> float:
+    """Makers always pay zero on Polymarket."""
+    return 0.0
 
 
 def load_credentials(credentials_path: Path | None = None) -> dict[str, str]:
@@ -791,12 +806,34 @@ class PolymarketClient:
         return prices
 
     def get_fee_rate(self, token_id: str) -> float:
+        """Return weather-market taker fee rate (0.05). Not derived from bps API."""
         if token_id in self._fee_cache:
             return self._fee_cache[token_id]
-        fee_bps = float(self.client.get_fee_rate_bps(token_id))
-        fee_rate = fee_bps / 10_000.0
-        self._fee_cache[token_id] = fee_rate
-        return fee_rate
+        self._fee_cache[token_id] = POLYMARKET_WEATHER_FEE_RATE
+        return POLYMARKET_WEATHER_FEE_RATE
+
+    def get_best_bid_ask(self, token_id: str) -> tuple[float | None, float | None]:
+        """Return (best_bid, best_ask) from the order book."""
+        book = self.client.get_order_book(token_id)
+        bids = book.bids if hasattr(book, "bids") else book.get("bids", [])
+        asks = book.asks if hasattr(book, "asks") else book.get("asks", [])
+
+        def _level_price(level: Any) -> float:
+            return float(getattr(level, "price", None) or level.get("price", 0))
+
+        best_bid = max(
+            (_level_price(b) for b in (bids or [])),
+            default=None,
+        )
+        best_ask = min(
+            (
+                _level_price(a)
+                for a in (asks or [])
+                if _level_price(a) > 0
+            ),
+            default=None,
+        )
+        return best_bid, best_ask
 
     def place_order(
         self,
@@ -808,6 +845,7 @@ class PolymarketClient:
         tick_size: str = "0.01",
         neg_risk: bool = True,
         dry_run: bool = True,
+        post_only: bool = True,
     ) -> dict[str, Any]:
         order_side = Side.BUY if side.upper() == "BUY" else Side.SELL
         order_args = OrderArgs(
@@ -826,29 +864,59 @@ class PolymarketClient:
             "tick_size": tick_size,
             "neg_risk": neg_risk,
             "dry_run": dry_run,
+            "post_only": post_only,
         }
 
         try:
+            signed = self.client.create_order(order_args, options)
             if dry_run:
-                signed = self.client.create_order(order_args, options)
                 record["status"] = "signed"
                 record["signed_order"] = str(signed)
             else:
-                response = self.client.create_and_post_order(
-                    order_args=order_args,
-                    options=options,
+                response = self.client.post_order(
+                    signed,
                     order_type=OrderType.GTC,
+                    post_only=post_only,
                 )
                 record["status"] = "posted"
                 record["response"] = response
                 if isinstance(response, dict):
                     record["order_id"] = response.get("orderID") or response.get("id")
         except Exception as exc:
+            error_text = str(exc).lower()
+            if post_only and any(
+                token in error_text for token in ("post", "cross", "match", "take")
+            ):
+                record["status"] = "rejected_would_cross"
+                record["error"] = str(exc)
+                _append_order_log(record)
+                return {
+                    "status": "rejected_would_cross",
+                    "price": price,
+                    "token_id": token_id,
+                    "error": str(exc),
+                }
             record["status"] = "error"
             record["error"] = str(exc)
 
         _append_order_log(record)
         return record
+
+    def cancel_unfilled_orders(self, event_date: str | None = None) -> None:
+        """Cancel all open GTC orders.
+
+        event_date is reserved for future filtering; open orders do not carry
+        event date metadata, so all open orders are cancelled.
+        """
+        _ = event_date
+        open_orders = self.client.get_open_orders()
+        for order in open_orders:
+            if not isinstance(order, dict):
+                continue
+            order_id = order.get("id") or order.get("orderID")
+            if order_id:
+                self.client.cancel_order(OrderPayload(orderID=order_id))
+                print(f"  Cancelled order {order_id}")
 
     def get_open_positions(self) -> list[dict[str, Any]]:
         orders = self.client.get_open_orders()

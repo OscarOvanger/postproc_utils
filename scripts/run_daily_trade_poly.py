@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 from datetime import date
@@ -32,10 +33,56 @@ from run_daily_trade import (  # noqa: E402
     select_trades,
 )
 from src.models.track_j import bucket_probs_from_point_forecast  # noqa: E402
-from src.polymarket_api import PolymarketClient  # noqa: E402
+from src.polymarket_api import (  # noqa: E402
+    PolymarketClient,
+    polymarket_maker_fee,
+    polymarket_taker_fee,
+)
 from src.sizing import has_edge  # noqa: E402
 
 POLY_PAPER_LOG = PROJECT_ROOT / "logs" / "poly_paper_trades.jsonl"
+
+
+def compute_maker_price(best_bid: float, best_ask: float, tick_size: float) -> float:
+    """Place order at midpoint, ensuring it stays on the bid side."""
+    midpoint = (best_bid + best_ask) / 2
+    maker_price = math.floor(midpoint / tick_size) * tick_size
+    if maker_price >= best_ask:
+        maker_price = best_ask - tick_size
+    if maker_price < best_bid:
+        maker_price = best_bid
+    return round(maker_price, 4)
+
+
+def apply_maker_pricing(
+    trades: list[dict[str, Any]],
+    client: PolymarketClient,
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """Attach maker limit prices from live order book."""
+    priced: list[dict[str, Any]] = []
+    skip_reasons: dict[str, str] = {}
+    for trade in trades:
+        token_id = str(trade["token_id"])
+        tick_size = float(trade.get("tick_size", "0.01"))
+        best_bid, best_ask = client.get_best_bid_ask(token_id)
+        if best_bid is None or best_ask is None:
+            skip_reasons[trade["city"]] = "no book for maker pricing"
+            print(f"  {trade['city']}: SKIP (no book for maker pricing)")
+            continue
+        entry_price = compute_maker_price(best_bid, best_ask, tick_size)
+        priced.append(
+            {
+                **trade,
+                "entry_price": entry_price,
+                "best_bid": best_bid,
+                "best_ask": best_ask,
+            }
+        )
+        print(
+            f"  {trade['city']}: maker price ${entry_price:.4f} "
+            f"(bid=${best_bid:.2f}, ask=${best_ask:.2f})"
+        )
+    return priced, skip_reasons
 
 
 def fetch_market_poly(
@@ -108,8 +155,6 @@ def compute_edge_poly(
     city_config: dict[str, Any],
     config: dict[str, Any],
     market_reasons: dict[str, str],
-    market_lookup: dict[str, dict[str, Any]],
-    client: PolymarketClient,
     event_date: str,
 ) -> tuple[list[dict[str, Any]], dict[str, str]]:
     """Compute best tradeable bucket per city using Polymarket prices."""
@@ -153,9 +198,10 @@ def compute_edge_poly(
             row = entry_rows.iloc[0]
             entry_price = float(row["yes_mid_close"])
             token_id = str(row["token_id"])
-            fee_per_contract = entry_price * client.get_fee_rate(token_id)
+            maker_fee = polymarket_maker_fee(1, entry_price)
+            taker_fee_per_contract = polymarket_taker_fee(1, entry_price)
             edge = float(model_prob) - entry_price
-            if entry_price < price_floor or not has_edge(model_prob, entry_price, fee_per_contract):
+            if entry_price < price_floor or not has_edge(model_prob, entry_price, maker_fee):
                 continue
             candidate = {
                 "city": city,
@@ -168,7 +214,8 @@ def compute_edge_poly(
                 "condition_id": str(row["condition_id"]),
                 "tick_size": str(row["tick_size"]),
                 "neg_risk": bool(row["neg_risk"]),
-                "fee_rate": client.get_fee_rate(token_id),
+                "maker_fee": maker_fee,
+                "taker_fee_per_contract": taker_fee_per_contract,
             }
             if best is None or candidate["edge"] > best["edge"]:
                 best = candidate
@@ -201,15 +248,17 @@ def size_positions_poly(
 
     sized: list[dict[str, Any]] = []
     for trade in trades:
-        price = float(trade["market_price"])
-        fee_rate = float(trade.get("fee_rate", 0.0))
-        fee = round(n_contracts * price * fee_rate, 4)
+        price = float(trade.get("entry_price", trade["market_price"]))
+        fee = polymarket_maker_fee(n_contracts, price)
+        taker_fee = polymarket_taker_fee(n_contracts, price)
         sized.append(
             {
                 **trade,
                 "n_contracts": n_contracts,
                 "capital_at_risk": round(n_contracts * price, 4),
                 "fee": fee,
+                "fee_type": "maker",
+                "taker_fee": taker_fee,
             }
         )
 
@@ -261,10 +310,11 @@ def daily_risk_report_poly(
     print()
 
     for idx, trade in enumerate(decision.get("trades", []), start=1):
+        order_price = trade.get("entry_price", trade["market_price"])
         print(
             f"Trade {idx}: {trade['city']} | {trade['bucket_label']} | "
             f"edge={trade['edge']:+.3f} | {trade['n_contracts']} contracts "
-            f"@ ${trade['market_price']:.2f} | fee=${trade['fee']:.2f}"
+            f"@ ${order_price:.2f} (maker GTC) | fee=${trade['fee']:.2f}"
         )
 
     if skipped_edges:
@@ -308,6 +358,11 @@ def main() -> None:
         action="store_true",
         help="Build forecasts and exit without market fetch or trading",
     )
+    parser.add_argument(
+        "--cancel-unfilled",
+        action="store_true",
+        help="Cancel all open GTC orders and exit",
+    )
     args = parser.parse_args()
 
     config = load_deploy_config(Path(args.config))
@@ -317,6 +372,11 @@ def main() -> None:
     poly_client = PolymarketClient()
 
     print(f"\n=== DAILY TRADE (POLYMARKET): {event_date} ({args.mode.upper()}) ===")
+
+    if args.cancel_unfilled:
+        print("\n--- Cancel unfilled GTC orders ---")
+        poly_client.cancel_unfilled_orders(event_date=event_date)
+        return
 
     if POLY_PAPER_LOG.exists() and not args.force:
         with open(POLY_PAPER_LOG, encoding="utf-8") as handle:
@@ -385,14 +445,17 @@ def main() -> None:
         city_config,
         config,
         all_reasons,
-        market_lookup,
-        poly_client,
         event_date,
     )
     all_reasons.update(edge_reasons)
 
     selected, all_reasons = select_trades(edges, config, all_reasons)
-    sized_trades = size_positions_poly(selected, bankroll, config)
+
+    print("\n--- apply_maker_pricing ---")
+    priced_trades, pricing_skip_reasons = apply_maker_pricing(selected, poly_client)
+    all_reasons.update(pricing_skip_reasons)
+
+    sized_trades = size_positions_poly(priced_trades, bankroll, config)
     skipped_edges = [
         row for row in edges if row["city"] not in {t["city"] for t in sized_trades}
     ]
@@ -403,12 +466,23 @@ def main() -> None:
             result = poly_client.place_order(
                 token_id=trade["token_id"],
                 side="YES",
-                price=trade["market_price"],
+                price=trade["entry_price"],
                 size=float(trade["n_contracts"]),
                 tick_size=trade.get("tick_size", "0.01"),
                 neg_risk=bool(trade.get("neg_risk", True)),
                 dry_run=False,
+                post_only=True,
             )
+            if result.get("status") == "rejected_would_cross":
+                print(
+                    f"  {trade['city']}: order rejected (would cross) "
+                    f"@ ${trade['entry_price']:.4f}"
+                )
+                all_reasons[trade["city"]] = "maker order rejected (would cross)"
+                continue
+            order_id = result.get("order_id")
+            if order_id:
+                print(f"  {trade['city']}: posted order {order_id}")
             live_trades.append({**trade, "order_result": result})
         sized_trades = live_trades
 
