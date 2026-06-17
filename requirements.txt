@@ -86,6 +86,7 @@ prompt_toolkit==3.0.52
 psutil==7.2.2
 ptyprocess==0.7.0
 pure_eval==0.2.3
+py-clob-client-v2
 pyarrow==24.0.0
 pycparser==3.0
 Pygments==2.20.0
