@@ -1,0 +1,16 @@
+{
+  "total_trades": 206,
+  "profit_target_trades": 135,
+  "settlement_trades": 71,
+  "bucket_flips": 33,
+  "bucket_flip_rate": 46.5,
+  "outcome_changes": 18,
+  "outcome_change_rate": 25.4,
+  "cli_win_rate": 0.7233,
+  "wunderground_win_rate": 0.733,
+  "cli_pnl_cents": 7931,
+  "wunderground_pnl_cents": 8931,
+  "pnl_difference_cents": 1000,
+  "cli_win_to_wunder_loss": 8,
+  "cli_loss_to_wunder_win": 10
+}
