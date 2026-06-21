@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -38,10 +39,10 @@ from run_daily_trade import (  # noqa: E402
 )
 from src.models.track_j import bucket_probs_from_point_forecast  # noqa: E402
 from src.polymarket_api import (  # noqa: E402
-    CLOB_HOST,
     EVENT_TITLE_RE,
     GAMMA_API,
     _parse_event_date,
+    fetch_order_book_http,
     parse_bucket_label,
 )
 from src.sizing import has_edge  # noqa: E402
@@ -224,44 +225,40 @@ def _paginate_gamma_events(
     return all_events
 
 
-def _fetch_clob_midpoint(session: requests.Session, token_id: str) -> float | None:
-    try:
-        response = session.get(
-            f"{CLOB_HOST}/midpoint",
-            params={"token_id": token_id},
-            timeout=20,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if isinstance(payload, dict):
-            return _to_float(payload.get("mid"))
-        return _to_float(payload)
-    except requests.RequestException:
-        return None
+def _compute_maker_entry_price(
+    *,
+    best_bid: float | None,
+    best_ask: float | None,
+    gamma_price: float | None,
+    tick_size: float,
+) -> float | None:
+    """Compute maker GTC limit price: one tick inside ask, or join bid."""
+    if best_ask is not None:
+        maker_entry = best_ask - tick_size
+        if best_bid is not None and maker_entry <= best_bid:
+            maker_entry = best_bid
+        return round(maker_entry, 4)
+    if gamma_price is not None:
+        return round(gamma_price, 4)
+    return None
 
 
-def _fetch_clob_book(
-    session: requests.Session,
-    token_id: str,
-) -> tuple[float | None, float | None, float | None]:
-    try:
-        response = session.get(
-            f"{CLOB_HOST}/book",
-            params={"token_id": token_id},
-            timeout=20,
-        )
-        response.raise_for_status()
-        book = response.json()
-        bids = book.get("bids") or []
-        asks = book.get("asks") or []
-        best_bid = _to_float(bids[0]["price"]) if bids else None
-        best_ask = _to_float(asks[0]["price"]) if asks else None
-        spread = None
-        if best_bid is not None and best_ask is not None:
-            spread = round(best_ask - best_bid, 4)
-        return best_bid, best_ask, spread
-    except (requests.RequestException, KeyError, IndexError, TypeError):
-        return None, None, None
+def _format_bid_ask(
+    best_bid: float | None,
+    best_ask: float | None,
+) -> str:
+    def _fmt(value: float | None) -> str:
+        if value is None or (isinstance(value, float) and math.isnan(value)):
+            return "-"
+        return f"{value:.2f}"
+
+    return f"{_fmt(best_bid)}/{_fmt(best_ask)}"
+
+
+def _format_spread_cents(spread: float | None) -> str:
+    if spread is None:
+        return "-"
+    return f"{int(round(spread * 100))}c"
 
 
 def fetch_market(
@@ -320,20 +317,26 @@ def fetch_market(
 
             yes_token_id = str(token_ids[yes_index])
             gamma_price = _to_float(outcome_prices[yes_index]) if outcome_prices else None
+            tick_size = str(market.get("orderPriceMinTickSize", "0.01"))
 
-            midpoint = _fetch_clob_midpoint(session, yes_token_id)
-            time.sleep(0.1)
-            if midpoint is None:
-                if gamma_price is not None:
+            if gamma_price is None:
+                continue
+
+            best_bid: float | None = None
+            best_ask: float | None = None
+            spread: float | None = None
+            if gamma_price >= POLY_PRICE_FLOOR:
+                best_bid, best_ask = fetch_order_book_http(yes_token_id)
+                time.sleep(0.15)
+                if best_bid is None and best_ask is None:
                     print(
-                        f"  WARNING: CLOB midpoint unavailable for {city} "
-                        f"{label!r}, using Gamma price {gamma_price:.4f}"
+                        f"  WARNING: empty order book for {city} "
+                        f"{label!r}, using gamma {gamma_price:.4f}"
                     )
-                    midpoint = gamma_price
-                else:
-                    continue
+                elif best_bid is not None and best_ask is not None:
+                    spread = round(best_ask - best_bid, 4)
 
-            best_bid, best_ask, spread = _fetch_clob_book(session, yes_token_id)
+            market_price = best_ask if best_ask is not None else gamma_price
 
             rows.append(
                 {
@@ -343,10 +346,13 @@ def fetch_market(
                     "bucket_type": parsed_bucket["type"],
                     "bucket_lower_inclusive_f": parsed_bucket["lower"],
                     "bucket_upper_inclusive_f": parsed_bucket["upper"],
-                    "yes_mid_close": float(midpoint),
+                    "gamma_price": float(gamma_price),
+                    "yes_mid_close": float(gamma_price),
+                    "market_price": float(market_price),
                     "yes_bid_close": best_bid,
                     "yes_ask_close": best_ask,
                     "spread": spread,
+                    "tick_size": tick_size,
                     "yes_token_id": yes_token_id,
                     "condition_id": str(market.get("conditionId") or condition_id),
                 }
@@ -416,7 +422,18 @@ def compute_edge(
             if entry_rows.empty:
                 continue
             row = entry_rows.iloc[0]
-            entry_price = float(row["yes_mid_close"])
+            gamma_price = _to_float(row.get("gamma_price"))
+            best_bid = _to_float(row.get("yes_bid_close"))
+            best_ask = _to_float(row.get("yes_ask_close"))
+            spread = _to_float(row.get("spread"))
+            tick_size = float(row.get("tick_size", 0.01))
+            entry_price = float(row["market_price"])
+            maker_entry_price = _compute_maker_entry_price(
+                best_bid=best_bid,
+                best_ask=best_ask,
+                gamma_price=gamma_price,
+                tick_size=tick_size,
+            )
             edge = float(model_prob) - entry_price
             # Polymarket maker orders: fee_per_contract = 0
             passes_guardrail = entry_price >= price_floor and has_edge(
@@ -436,7 +453,10 @@ def compute_edge(
                 {
                     "bucket_label": str(bucket_label),
                     "model_prob": float(model_prob),
+                    "gamma_price": gamma_price,
                     "market_price": entry_price,
+                    "best_bid": best_bid,
+                    "best_ask": best_ask,
                     "edge": edge,
                     "status": status,
                 }
@@ -449,14 +469,17 @@ def compute_edge(
                 "city": city,
                 "bucket_label": str(bucket_label),
                 "model_prob": float(model_prob),
+                "gamma_price": gamma_price,
                 "market_price": entry_price,
                 "edge": edge,
                 "side": "YES",
                 "yes_token_id": str(row["yes_token_id"]),
                 "condition_id": str(row["condition_id"]),
-                "best_bid": row.get("yes_bid_close"),
-                "best_ask": row.get("yes_ask_close"),
-                "spread": row.get("spread"),
+                "best_bid": best_bid,
+                "best_ask": best_ask,
+                "spread": spread,
+                "tick_size": tick_size,
+                "maker_entry_price": maker_entry_price,
             }
             if best is None or candidate["edge"] > best["edge"]:
                 best = candidate
@@ -517,14 +540,14 @@ def size_positions_poly(
 
     sized: list[dict[str, Any]] = []
     for trade in trades:
-        price = float(trade["market_price"])
+        maker_price = float(trade.get("maker_entry_price") or trade["market_price"])
         sized.append(
             {
                 **trade,
                 "n_contracts": n_contracts,
-                "capital_at_risk": round(n_contracts * price, 4),
-                "maker_fee": poly_maker_fee(n_contracts, price),
-                "potential_taker_fee": poly_taker_fee(n_contracts, price),
+                "capital_at_risk": round(n_contracts * maker_price, 4),
+                "maker_fee": poly_maker_fee(n_contracts, maker_price),
+                "potential_taker_fee": poly_taker_fee(n_contracts, float(trade["market_price"])),
             }
         )
 
@@ -566,7 +589,7 @@ def _print_market_diagnostics(
             print(f"  {city}: no market data")
             continue
 
-        prices = pd.to_numeric(day_df["yes_mid_close"], errors="coerce").dropna()
+        prices = pd.to_numeric(day_df["gamma_price"], errors="coerce").dropna()
         if prices.empty:
             print(f"  {city}: no valid prices")
             continue
@@ -576,14 +599,20 @@ def _print_market_diagnostics(
         modal_idx = prices.idxmax()
         modal_row = day_df.loc[modal_idx]
         modal_bucket = str(modal_row["bucket_label"])
-        modal_price = float(prices.max())
+        modal_price = float(modal_row.get("market_price", prices.max()))
+        modal_bid = _to_float(modal_row.get("yes_bid_close"))
+        modal_ask = _to_float(modal_row.get("yes_ask_close"))
+        modal_spread = _to_float(modal_row.get("spread"))
 
         print(f"  {city}: {n_buckets} buckets, {n_above_floor} above ${POLY_PRICE_FLOOR:.2f} floor")
-        print(f"    Modal: {modal_bucket} @ ${modal_price:.3f}")
-        print(
-            f"    Price distribution: min=${prices.min():.3f} "
-            f"median=${prices.median():.3f} max=${prices.max():.3f}"
-        )
+        if modal_bid is not None and modal_ask is not None:
+            print(
+                f"    Modal: {modal_bucket} @ ${modal_price:.3f} "
+                f"(bid={modal_bid:.2f}, ask={modal_ask:.2f}, "
+                f"spread={_format_spread_cents(modal_spread)})"
+            )
+        else:
+            print(f"    Modal: {modal_bucket} @ ${modal_price:.3f} (no order book)")
         if n_above_floor <= 1:
             print(
                 f"    WARNING: Only {n_above_floor} bucket(s) above floor. "
@@ -619,19 +648,21 @@ def _print_sanity_check(
                 f"\n{city.replace('_', ' ').title()} "
                 f"(Tmax forecast: {tmax_pred}F, sigma: {sigma:.2f})"
             )
-        print(f"  {'Bucket':<12} {'Model_P':>8} {'Market_P':>9} {'Edge':>7}  Status")
+        print(f"  {'Bucket':<12} {'Model_P':>8} {'Mkt_P':>7} {'Bid/Ask':>10} {'Edge':>7}  Status")
         sum_model = 0.0
         sum_market = 0.0
         for row in rows:
             sum_model += row["model_prob"]
             sum_market += row["market_price"]
+            bid_ask = _format_bid_ask(row.get("best_bid"), row.get("best_ask"))
             print(
                 f"  {row['bucket_label']:<12} "
                 f"{row['model_prob']:>8.3f} "
-                f"{row['market_price']:>9.3f} "
+                f"{row['market_price']:>7.3f} "
+                f"{bid_ask:>10} "
                 f"{row['edge']:>+7.3f}  {row['status']}"
             )
-        print(f"  {'Sum:':<12} {sum_model:>8.3f} {sum_market:>9.3f}")
+        print(f"  {'Sum:':<12} {sum_model:>8.3f} {sum_market:>7.3f}")
 
 
 def daily_risk_report_poly(
@@ -669,10 +700,17 @@ def daily_risk_report_poly(
     print()
 
     for idx, trade in enumerate(decision.get("trades", []), start=1):
+        bid = trade.get("best_bid")
+        ask = trade.get("best_ask")
+        spread = trade.get("spread")
+        bid_str = f"${bid:.2f}" if bid is not None else "-"
+        ask_str = f"${ask:.2f}" if ask is not None else "-"
+        spread_str = _format_spread_cents(spread)
         print(
             f"Trade {idx}: {trade['city']} | {trade['bucket_label']} | "
-            f"edge={trade['edge']:+.3f} | {trade['n_contracts']} contracts "
-            f"@ ${trade['market_price']:.2f} (maker GTC) | "
+            f"edge={trade['edge']:+.3f} | {trade['n_contracts']} @ "
+            f"${trade['market_price']:.2f} (ask={ask_str}, bid={bid_str}, "
+            f"spread={spread_str}) | maker GTC | "
             f"maker_fee=${trade.get('maker_fee', 0.0):.2f}"
         )
 
@@ -877,15 +915,17 @@ def main() -> None:
                 result = poly_client.place_order(
                     token_id=trade["yes_token_id"],
                     side="YES",
-                    price=trade["market_price"],
+                    price=float(trade.get("maker_entry_price") or trade["market_price"]),
                     size=float(trade["n_contracts"]),
+                    tick_size=str(trade.get("tick_size", "0.01")),
                     dry_run=False,
                     post_only=True,
                 )
                 if result.get("status") == "rejected_would_cross":
+                    maker_px = trade.get("maker_entry_price") or trade["market_price"]
                     print(
                         f"  {trade['city']}: order rejected (would cross) "
-                        f"@ ${trade['market_price']:.4f}"
+                        f"@ ${maker_px:.4f}"
                     )
                     all_reasons[trade["city"]] = "maker order rejected (would cross)"
                     continue
@@ -896,10 +936,11 @@ def main() -> None:
             sized_trades = live_trades
         else:
             for trade in sized_trades:
+                maker_px = trade.get("maker_entry_price") or trade["market_price"]
                 print(
                     f"  LIVE: would place order {trade['city']} | "
                     f"{trade['bucket_label']} | {trade['n_contracts']} contracts "
-                    f"@ ${trade['market_price']:.2f} (post_only GTC)"
+                    f"@ ${maker_px:.2f} (post_only GTC)"
                 )
 
     total_cap = round(sum(t["capital_at_risk"] for t in sized_trades), 2)

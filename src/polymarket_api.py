@@ -12,18 +12,6 @@ from typing import Any
 
 import requests
 
-from py_clob_client_v2 import (
-    ApiCreds,
-    AssetType,
-    BalanceAllowanceParams,
-    ClobClient,
-    OrderArgs,
-    OrderPayload,
-    OrderType,
-    PartialCreateOrderOptions,
-    Side,
-)
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CREDENTIALS_PATH = PROJECT_ROOT / "config" / "polymarket_credentials.json"
 DEFAULT_MARKETS_PATH = PROJECT_ROOT / "config" / "polymarket_markets.json"
@@ -161,9 +149,21 @@ def parse_bucket_label(label: str) -> dict[str, Any]:
     if less_than:
         return {"type": "LESS_THAN", "lower": None, "upper": int(less_than.group(1))}
 
+    under = re.search(r"(?i)(?:less\s+than|under)\s+(\d+)", text)
+    if under:
+        return {"type": "LESS_THAN", "lower": None, "upper": int(under.group(1))}
+
     greater_than = re.match(r"(?i)(\d+)\s*°?\s*or\s+above", text)
     if greater_than:
         return {"type": "GREATER_THAN", "lower": int(greater_than.group(1)), "upper": None}
+
+    or_more = re.search(r"(?i)(\d+)\s*°?\s*or\s+more", text)
+    if or_more:
+        return {"type": "GREATER_THAN", "lower": int(or_more.group(1)), "upper": None}
+
+    above = re.search(r"(?i)(?:greater\s+than|above)\s+(\d+)", text)
+    if above:
+        return {"type": "GREATER_THAN", "lower": int(above.group(1)), "upper": None}
 
     range_match = re.match(r"(?i)(\d+)\s*°?\s*to\s+(\d+)", text)
     if range_match:
@@ -221,12 +221,64 @@ def _parse_midpoint(response: Any) -> float | None:
     return _to_float(response)
 
 
-def _book_sides(book: dict[str, Any]) -> tuple[float | None, float | None]:
-    bids = book.get("bids") or []
-    asks = book.get("asks") or []
-    best_bid = _to_float(bids[0]["price"]) if bids else None
-    best_ask = _to_float(asks[0]["price"]) if asks else None
+def _level_price_size(level: Any) -> tuple[float | None, float | None]:
+    """Extract (price, size) from a CLOB book level (dict or object)."""
+    if isinstance(level, dict):
+        price = _to_float(level.get("price"))
+        size = _to_float(level.get("size"))
+    else:
+        price = _to_float(getattr(level, "price", None))
+        size = _to_float(getattr(level, "size", None))
+    return price, size
+
+
+def _parse_order_book_sides(book: Any) -> tuple[float | None, float | None]:
+    """Parse best bid/ask from CLOB book (dict or py_clob_client object)."""
+    raw_bids = (
+        getattr(book, "bids", None)
+        or (book.get("bids") if isinstance(book, dict) else None)
+        or []
+    )
+    raw_asks = (
+        getattr(book, "asks", None)
+        or (book.get("asks") if isinstance(book, dict) else None)
+        or []
+    )
+
+    bids: list[tuple[float, float]] = []
+    for level in raw_bids:
+        price, size = _level_price_size(level)
+        if price is not None and price > 0 and size is not None and size > 0:
+            bids.append((price, size))
+
+    asks: list[tuple[float, float]] = []
+    for level in raw_asks:
+        price, size = _level_price_size(level)
+        if price is not None and price > 0 and size is not None and size > 0:
+            asks.append((price, size))
+
+    best_bid = max((p for p, _ in bids), default=None)
+    best_ask = min((p for p, _ in asks), default=None)
     return best_bid, best_ask
+
+
+def _book_sides(book: dict[str, Any]) -> tuple[float | None, float | None]:
+    return _parse_order_book_sides(book)
+
+
+def fetch_order_book_http(token_id: str) -> tuple[float | None, float | None]:
+    """Fetch order book via public CLOB HTTP API (no credentials required)."""
+    try:
+        response = requests.get(
+            f"{CLOB_HOST}/book",
+            params={"token_id": token_id},
+            timeout=20,
+        )
+        response.raise_for_status()
+        return _parse_order_book_sides(response.json())
+    except Exception as exc:
+        print(f"  WARNING: order book fetch failed for {token_id}: {exc}")
+        return None, None
 
 
 def _gamma_market_for_condition(condition_id: str) -> dict[str, Any] | None:
@@ -404,7 +456,7 @@ def _discover_from_gamma_search(
 
 
 def _discover_from_clob_sampling(
-    client: ClobClient,
+    client: Any,
     *,
     event_date: str | None = None,
     active_only: bool = False,
@@ -576,7 +628,7 @@ def _merge_grouped_markets(
     return list(merged.values())
 
 
-def _attach_prices(client: ClobClient, markets: list[dict[str, Any]]) -> None:
+def _attach_prices(client: Any, markets: list[dict[str, Any]]) -> None:
     for market in markets:
         if market.get("closed"):
             continue
@@ -622,7 +674,7 @@ def _bucket_width(market: dict[str, Any]) -> int | None:
 
 
 def discover_tmax_markets(
-    client: ClobClient,
+    client: Any,
     *,
     event_date: str | None = None,
     active_only: bool = False,
@@ -718,7 +770,36 @@ def _append_order_log(record: dict[str, Any]) -> None:
         handle.write(json.dumps(record, default=str) + "\n")
 
 
-def build_clob_client(credentials: dict[str, str] | None = None) -> ClobClient:
+def _clob_types() -> dict[str, Any]:
+    from py_clob_client_v2 import (
+        ApiCreds,
+        AssetType,
+        BalanceAllowanceParams,
+        ClobClient,
+        OrderArgs,
+        OrderPayload,
+        OrderType,
+        PartialCreateOrderOptions,
+        Side,
+    )
+
+    return {
+        "ApiCreds": ApiCreds,
+        "AssetType": AssetType,
+        "BalanceAllowanceParams": BalanceAllowanceParams,
+        "ClobClient": ClobClient,
+        "OrderArgs": OrderArgs,
+        "OrderPayload": OrderPayload,
+        "OrderType": OrderType,
+        "PartialCreateOrderOptions": PartialCreateOrderOptions,
+        "Side": Side,
+    }
+
+
+def build_clob_client(credentials: dict[str, str] | None = None) -> Any:
+    clob = _clob_types()
+    ClobClient = clob["ClobClient"]
+    ApiCreds = clob["ApiCreds"]
     creds = credentials or load_credentials()
     return ClobClient(
         host=CLOB_HOST,
@@ -746,8 +827,9 @@ class PolymarketClient:
         self._markets_path = DEFAULT_MARKETS_PATH
 
     def get_balance(self) -> float:
+        clob = _clob_types()
         result = self.client.get_balance_allowance(
-            BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
+            clob["BalanceAllowanceParams"](asset_type=clob["AssetType"].COLLATERAL)
         )
         raw = result.get("balance", 0) if isinstance(result, dict) else 0
         return float(raw) / 1_000_000
@@ -813,27 +895,13 @@ class PolymarketClient:
         return POLYMARKET_WEATHER_FEE_RATE
 
     def get_best_bid_ask(self, token_id: str) -> tuple[float | None, float | None]:
-        """Return (best_bid, best_ask) from the order book."""
-        book = self.client.get_order_book(token_id)
-        bids = book.bids if hasattr(book, "bids") else book.get("bids", [])
-        asks = book.asks if hasattr(book, "asks") else book.get("asks", [])
-
-        def _level_price(level: Any) -> float:
-            return float(getattr(level, "price", None) or level.get("price", 0))
-
-        best_bid = max(
-            (_level_price(b) for b in (bids or [])),
-            default=None,
-        )
-        best_ask = min(
-            (
-                _level_price(a)
-                for a in (asks or [])
-                if _level_price(a) > 0
-            ),
-            default=None,
-        )
-        return best_bid, best_ask
+        """Return (best_bid, best_ask) from the CLOB order book."""
+        try:
+            book = self.client.get_order_book(token_id)
+        except Exception as exc:
+            print(f"  WARNING: order book fetch failed for {token_id}: {exc}")
+            return None, None
+        return _parse_order_book_sides(book)
 
     def place_order(
         self,
@@ -847,6 +915,11 @@ class PolymarketClient:
         dry_run: bool = True,
         post_only: bool = True,
     ) -> dict[str, Any]:
+        clob = _clob_types()
+        Side = clob["Side"]
+        OrderArgs = clob["OrderArgs"]
+        OrderType = clob["OrderType"]
+        PartialCreateOrderOptions = clob["PartialCreateOrderOptions"]
         order_side = Side.BUY if side.upper() == "BUY" else Side.SELL
         order_args = OrderArgs(
             token_id=token_id,
@@ -909,6 +982,8 @@ class PolymarketClient:
         event date metadata, so all open orders are cancelled.
         """
         _ = event_date
+        clob = _clob_types()
+        OrderPayload = clob["OrderPayload"]
         open_orders = self.client.get_open_orders()
         for order in open_orders:
             if not isinstance(order, dict):
@@ -935,4 +1010,5 @@ class PolymarketClient:
         return simplified
 
     def cancel_order(self, order_id: str) -> dict[str, Any]:
-        return self.client.cancel_order(OrderPayload(orderID=order_id))
+        clob = _clob_types()
+        return self.client.cancel_order(clob["OrderPayload"](orderID=order_id))
