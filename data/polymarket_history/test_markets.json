@@ -1,0 +1,74 @@
+[
+  {
+    "category": "ACTIVE",
+    "event_id": "599387",
+    "event_slug": "highest-temperature-in-chicago-on-june-17-2026",
+    "condition_id": "0x27943962a563d9c438cb9d4de62153d6845552c40926f9eca6da83b34562e2e5",
+    "city": "chicago_midway",
+    "event_date": "2026-06-17",
+    "yes_token_id": "7316563335498730385838767291824523411883612485039640288254670120582119586317",
+    "question": "Will the highest temperature in Chicago be between 60-61\u00b0F on June 17?",
+    "bucket_label": "60-61\u00b0F",
+    "bucket_volume": 35078.750095
+  },
+  {
+    "category": "ACTIVE",
+    "event_id": "599383",
+    "event_slug": "highest-temperature-in-nyc-on-june-17-2026",
+    "condition_id": "0xce502b45ecaca8217b75e0bbc415fe021792cd3067b71a877fd4ab7d9ee20000",
+    "city": "new_york_city",
+    "event_date": "2026-06-17",
+    "yes_token_id": "62768491022006966367746735855479484404571738399390756737110244478230122167173",
+    "question": "Will the highest temperature in New York City be between 76-77\u00b0F on June 17?",
+    "bucket_label": "76-77\u00b0F",
+    "bucket_volume": 23707.313074999984
+  },
+  {
+    "category": "RECENTLY_CLOSED",
+    "event_id": "595924",
+    "event_slug": "highest-temperature-in-san-francisco-on-june-16-2026",
+    "condition_id": "0xd7ed6eb2e37a51636e95b926711b2fe06ea1b7eab9c36ffd474af0b8b5ca1518",
+    "city": "san_francisco",
+    "event_date": "2026-06-16",
+    "yes_token_id": "97547820151851934385624361795183414202627498313853169182652066594899114029962",
+    "question": "Will the highest temperature in San Francisco be 65\u00b0F or below on June 16?",
+    "bucket_label": "65\u00b0F or below",
+    "bucket_volume": 21841.056397999997
+  },
+  {
+    "category": "RECENTLY_CLOSED",
+    "event_id": "595923",
+    "event_slug": "highest-temperature-in-los-angeles-on-june-16-2026",
+    "condition_id": "0x97ee2026fcf612f5ce6c67a016541db61e367f12656618153d81cd883eacbbfc",
+    "city": "los_angeles",
+    "event_date": "2026-06-16",
+    "yes_token_id": "31045695516170541649868340816580053599816366338902514528700474373479801197184",
+    "question": "Will the highest temperature in Los Angeles be between 68-69\u00b0F on June 16?",
+    "bucket_label": "68-69\u00b0F",
+    "bucket_volume": 14326.373247000014
+  },
+  {
+    "category": "OLD_CLOSED",
+    "event_id": "306351",
+    "event_slug": "highest-temperature-in-austin-on-march-29-2026",
+    "condition_id": "0xc9b444bbbc11a658924047a0dde879acfceabbaac49833ec19e5433174cd9e31",
+    "city": "austin",
+    "event_date": "2026-03-29",
+    "yes_token_id": "82040236806623927311189387894704650848975911336340930598600527810112658803858",
+    "question": "Will the highest temperature in Austin be between 74-75\u00b0F on March 29?",
+    "bucket_label": "74-75\u00b0F",
+    "bucket_volume": 62855.160942999995
+  },
+  {
+    "category": "OLD_CLOSED",
+    "event_id": "299442",
+    "event_slug": "highest-temperature-in-houston-on-march-27-2026",
+    "condition_id": "0xce445a21ad98a0edd9ddcf0f100cc08fa25fb58748a19e52521f63756d9a1509",
+    "city": "houston",
+    "event_date": "2026-03-27",
+    "yes_token_id": "1867624120624290671389950627404220173087725768371120450975508357869679387891",
+    "question": "Will the highest temperature in Houston be between 82-83\u00b0F on March 27?",
+    "bucket_label": "82-83\u00b0F",
+    "bucket_volume": 55168.191937
+  }
+]

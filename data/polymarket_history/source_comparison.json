@@ -1,0 +1,42 @@
+{
+  "comparison": [
+    {
+      "source": "clob_trades",
+      "active_lookback": null,
+      "closed_lookback": null,
+      "old_closed_lookback": null,
+      "resolution": "trade-level",
+      "pagination": "next_cursor (max 5 pages in test)",
+      "rate_limit_issues": false
+    },
+    {
+      "source": "data_api_activity",
+      "active_lookback": null,
+      "closed_lookback": null,
+      "old_closed_lookback": null,
+      "resolution": "trade-level",
+      "pagination": "offset/limit (max offset 10000); requires user param",
+      "rate_limit_issues": false
+    },
+    {
+      "source": "data_api_trades",
+      "active_lookback": 1.9067939814814814,
+      "closed_lookback": 3.6122569444444443,
+      "old_closed_lookback": 3.6122569444444443,
+      "resolution": "trade-level",
+      "pagination": "offset/limit (max offset 10000)",
+      "rate_limit_issues": false
+    },
+    {
+      "source": "clob_prices_history",
+      "active_lookback": 1.9291550925925927,
+      "closed_lookback": 4.541898148148148,
+      "old_closed_lookback": 4.541898148148148,
+      "resolution": "5-60 min snapshots",
+      "pagination": "single request per fidelity",
+      "rate_limit_issues": false
+    }
+  ],
+  "recommendation": "clob_prices_history",
+  "viable_for_build": false
+}

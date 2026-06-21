@@ -1,0 +1,16 @@
+{
+  "city": "austin",
+  "lead_time": "t1",
+  "n_train": 1187,
+  "n_val": 0,
+  "n_test": 0,
+  "n_features": 13,
+  "features_dropped": [],
+  "val_crps": null,
+  "val_mae": null,
+  "val_mean_sigma": null,
+  "val_std_sigma": null,
+  "val_mean_mu": null,
+  "train_crps": 1.0798,
+  "best_n_estimators": 500
+}

@@ -1,0 +1,104 @@
+{
+  "start_date": "2026-03-30",
+  "end_date": "2026-06-20",
+  "n_calendar_days": 83,
+  "window_pct_of_60d": 138.3,
+  "sharpe_annual": 7.35,
+  "sharpe_ci_lo": 6.21,
+  "sharpe_ci_hi": 8.49,
+  "sortino_annual": 10.37,
+  "total_pnl_cents": 7931.0,
+  "total_pnl_dollars": 79.31,
+  "final_bankroll_cents": 17931.0,
+  "max_drawdown_cents": -812.0,
+  "max_drawdown_pct": -0.0585,
+  "worst_losing_streak": 3,
+  "eliminated": false,
+  "elimination_date": null,
+  "min_bankroll_cents": 10000.0,
+  "n_trades": 206,
+  "n_trading_days": 70,
+  "trades_per_day": 2.48,
+  "projected_60d_trades": 148.9,
+  "meets_80_trade_min": true,
+  "win_rate": 0.7233,
+  "mean_edge": 0.2789,
+  "mean_pnl_per_trade_cents": 38.5,
+  "profit_factor": 1.94,
+  "n_profit_target_exits": 135,
+  "n_settlement_exits": 71,
+  "pnl_concentration_top3": 0.2367,
+  "per_city": {
+    "chicago_midway": {
+      "n_trades": 30,
+      "total_pnl": 1078,
+      "win_rate": 0.8,
+      "n_profit_target": 24,
+      "n_settlement": 6
+    },
+    "houston": {
+      "n_trades": 49,
+      "total_pnl": 3955,
+      "win_rate": 0.8367346938775511,
+      "n_profit_target": 33,
+      "n_settlement": 16
+    },
+    "los_angeles": {
+      "n_trades": 16,
+      "total_pnl": 1043,
+      "win_rate": 0.875,
+      "n_profit_target": 13,
+      "n_settlement": 3
+    },
+    "new_york_city": {
+      "n_trades": 32,
+      "total_pnl": 1045,
+      "win_rate": 0.71875,
+      "n_profit_target": 22,
+      "n_settlement": 10
+    },
+    "oklahoma_city": {
+      "n_trades": 28,
+      "total_pnl": -1242,
+      "win_rate": 0.39285714285714285,
+      "n_profit_target": 11,
+      "n_settlement": 17
+    },
+    "phoenix": {
+      "n_trades": 37,
+      "total_pnl": 2015,
+      "win_rate": 0.7837837837837838,
+      "n_profit_target": 26,
+      "n_settlement": 11
+    },
+    "san_francisco": {
+      "n_trades": 14,
+      "total_pnl": 37,
+      "win_rate": 0.5,
+      "n_profit_target": 6,
+      "n_settlement": 8
+    }
+  },
+  "psr_0": 1.0,
+  "min_trl_0": 12.1,
+  "gonogo": {
+    "not_eliminated": true,
+    "projected_trades_80": true,
+    "sharpe_positive": true,
+    "max_dd_under_30pct": true,
+    "win_rate_above_50pct": true,
+    "psr_above_95pct": true
+  },
+  "gonogo_pass_count": 6,
+  "positive_trading_days": 52,
+  "best_day": {
+    "date": "2026-04-01",
+    "pnl_cents": 753.0,
+    "city": "new_york_city"
+  },
+  "worst_day": {
+    "date": "2026-05-05",
+    "pnl_cents": -551.0,
+    "city": "houston"
+  }
+}

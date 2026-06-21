@@ -1,0 +1,9 @@
+{
+  "event_date": "2026-06-07",
+  "n_trades": 0,
+  "trades": [],
+  "bankroll_before": 10000,
+  "contracts_used": 5,
+  "edge_threshold": 0.03707426079737483,
+  "dry_run": true
+}

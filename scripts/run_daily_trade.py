@@ -144,7 +144,7 @@ def fetch_market(
             reasons[city] = "unknown city in Codex map"
             continue
         try:
-            rows = fetch_city_dates(codex, city_def, target, target, merge_each=True, paper_live=True)
+            rows = fetch_city_dates(codex, city_def, target, target, merge_each=True, paper_live=True, force_refresh=True)
             if not rows:
                 reasons[city] = "no market data"
         except Exception as exc:
@@ -468,6 +468,16 @@ def main() -> None:
         type=str,
         default=str(PROJECT_ROOT / "config" / "deploy_config.json"),
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Bypass duplicate check in paper_trades.jsonl",
+    )
+    parser.add_argument(
+        "--prefetch-only",
+        action="store_true",
+        help="Build forecasts and exit without market fetch or trading",
+    )
     args = parser.parse_args()
 
     config = load_deploy_config(Path(args.config))
@@ -479,7 +489,7 @@ def main() -> None:
 
     log_dir = PROJECT_ROOT / config["log_dir"]
     log_path = log_dir / "paper_trades.jsonl"
-    if log_path.exists():
+    if log_path.exists() and not args.force:
         with open(log_path, encoding="utf-8") as handle:
             for line in handle:
                 if not line.strip():
@@ -487,11 +497,55 @@ def main() -> None:
                 entry = json.loads(line)
                 if entry.get("date") == event_date and entry.get("mode") == args.mode:
                     print(f"Decision log already exists for {event_date}. Skipping.")
+                    print("Use --force to override.")
                     return
 
-    market_df, market_reasons = fetch_market(config, event_date)
-    forecasts, forecast_reasons, forecast_notes = fetch_forecast(config, event_date, city_config)
+    if args.force:
+        print("--force: overriding duplicate check, will append new entry")
 
+    print("\n--- PHASE 1: Pre-fetch features ---")
+    forecasts, forecast_reasons, forecast_notes = fetch_forecast(
+        config, event_date, city_config
+    )
+    n_forecasts = len(forecasts)
+    print(f"\nFeature coverage: {n_forecasts}/{len(config['cities'])} cities")
+    if n_forecasts == 0:
+        print("ABORT: 0 cities have forecast coverage. Fix data sources.")
+        decision = {
+            "date": event_date,
+            "mode": args.mode,
+            "bankroll": bankroll,
+            "cities_attempted": config["cities"],
+            "n_cities_eligible": len(config["cities"]),
+            "n_cities_with_forecast": 0,
+            "n_trades_selected": 0,
+            "edge_threshold": float(config["edge_threshold"]),
+            "daily_loss_cap": float(config["daily_loss_cap"]),
+            "trades": [],
+            "total_capital_at_risk": 0,
+            "daily_loss_cap_remaining": float(config["daily_loss_cap"]),
+            "no_signal_cities": sorted(config["cities"]),
+            "no_signal_reasons": {**forecast_reasons},
+            "forecast_notes": forecast_notes,
+        }
+        log_decision(decision, config)
+        daily_risk_report(decision, [], args.mode)
+        return
+
+    for city, pred in sorted(forecasts.items()):
+        note = forecast_notes.get(city, "")
+        print(f"  {city}: {pred}F{' (' + note + ')' if note else ''}")
+    for city, reason in sorted(forecast_reasons.items()):
+        print(f"  {city}: SKIP ({reason})")
+
+    if args.prefetch_only:
+        print("\n--prefetch-only: stopping after feature build.")
+        return
+
+    print("\n--- PHASE 2: Fetch market snapshot ---")
+    market_df, market_reasons = fetch_market(config, event_date)
+
+    print("\n--- PHASE 3: Compute edge, select, size ---")
     all_reasons = {**market_reasons, **forecast_reasons}
     edges, edge_reasons = compute_edge(
         market_df, forecasts, city_config, config, all_reasons, event_date

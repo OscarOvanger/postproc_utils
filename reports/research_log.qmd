@@ -1308,3 +1308,647 @@ Based on OOS results (Table \ref{tbl-intraday-exit}), **profit\_target\_15c** is
 # Cron example (Mon--Sat, every 5 min during market hours):
 */5 10-23 * * 1-6 cd ~/MCP_Project && python scripts/market_monitor.py
 ```
+
+# Extended MCP Challenge Simulation
+
+## Setup
+
+This section documents the definitive pre-deployment backtest that justifies deploying Track-B on Polymarket starting 24 June 2026. The simulation evaluates **track\_b\_flat + flat\_5 + edge\_threshold $E^* = 0.037$** with the **profit\_target\_15c** intraday exit rule over the longest available Kalshi market window under full MCP challenge constraints.
+
+The simulation window spans **30 March to 20 June 2026** (83 calendar days, 138\% of the 60-day challenge). Data sources are concatenated in order: `threshold\_opt.parquet` (IS, approximately 50 days), `time\_holdout.parquet` (OOS, 15 days), `fresh\_validation` market data (3--14 June), and supplemental CSV gap fill through 20 June.
+
+**Important caveat:** 60 of 83 days fall in the IS partition, and $E^* = 0.037$ was calibrated on IS data. IS-period edge estimates are therefore upwardly biased and not independent. The uncontaminated OOS+fresh portion (19 May to 14 June, approximately 27 days) remains the cleanest read on deployment performance and is compared to the prior settlement-only simulation in Section 8.
+
+The intraday exit rule exits when YES mid rises 15 cents above entry (2$\times$ taker fees on early exit); otherwise the position falls through to settlement. MCP constraints apply throughout: \$100 starting capital, \$70 elimination threshold, \$6 daily loss cap, 30\% maximum position size, and flat 5 contracts (reduced to 3 below \$85 bankroll). Austin and Philadelphia are excluded due to insufficient OOS feature coverage (Section 7).
+
+Table \ref{tbl-extended-sim-summary} summarises the extended simulation. Source: `data/mcp\_simulation\_extended/summary.json`.
+
+```{python}
+#| label: tbl-extended-sim-summary
+#| output: asis
+EXTENDED_DIR = PROJECT_ROOT / "data" / "mcp_simulation_extended"
+PRIOR_MCP_PATH = REPORT_DIR / "mcp_simulation_summary.json"
+IS_OOS_BOUNDARY = pd.Timestamp("2026-05-19")
+FIG_COLORS = {"green": "#2ca02c", "red": "#d62728", **PALETTE}
+
+with open(EXTENDED_DIR / "summary.json", encoding="utf-8") as handle:
+    ext = json.load(handle)
+
+ext_trades = pd.read_parquet(EXTENDED_DIR / "trades.parquet")
+ext_daily = pd.read_parquet(EXTENDED_DIR / "daily_log.parquet")
+
+period = f"{ext['start_date']} to {ext['end_date']}"
+conc = ext.get("pnl_concentration_top3")
+conc_str = f"{conc:.1%}" if conc is not None else "n/a"
+
+rows = [
+    ("Period", period),
+    ("Calendar days", str(ext["n_calendar_days"])),
+    ("Total PnL", f"${ext['total_pnl_dollars']:.2f}"),
+    ("Final bankroll", f"${ext['final_bankroll_cents'] / 100:.2f}"),
+    (
+        "Sharpe (annual)",
+        f"{ext['sharpe_annual']:.2f} [{ext['sharpe_ci_lo']:.2f}, {ext['sharpe_ci_hi']:.2f}]",
+    ),
+    ("Sortino (annual)", f"{ext['sortino_annual']:.2f}"),
+    ("PSR(SR*=0)", f"{ext['psr_0']:.1%}"),
+    ("MinTRL(SR*=0)", f"{ext['min_trl_0']:.0f} days"),
+    (
+        "Max drawdown",
+        f"${ext['max_drawdown_cents'] / 100:.2f} ({ext['max_drawdown_pct']:.1%})",
+    ),
+    ("Min bankroll", f"${ext['min_bankroll_cents'] / 100:.2f}"),
+    ("Eliminated", str(ext["eliminated"])),
+    ("Worst losing streak", f"{ext['worst_losing_streak']} days"),
+    ("Total trades", str(ext["n_trades"])),
+    ("Trading days / calendar days", f"{ext['n_trading_days']}/{ext['n_calendar_days']}"),
+    ("Trades/day", f"{ext['trades_per_day']:.2f}"),
+    (
+        "Projected 60-day trades",
+        f"{ext['projected_60d_trades']:.0f} ({'PASS' if ext['meets_80_trade_min'] else 'FAIL'} >= 80)",
+    ),
+    ("Win rate", f"{ext['win_rate']:.1%}"),
+    ("Mean edge", f"{ext['mean_edge']:.3f}"),
+    ("Profit factor", f"{ext['profit_factor']:.2f}"),
+    ("Profit-target exits", str(ext["n_profit_target_exits"])),
+    ("Settlement exits", str(ext["n_settlement_exits"])),
+    ("PnL concentration (top 3 days)", conc_str),
+]
+ext_table = pd.DataFrame(rows, columns=["Metric", "Value"])
+ext_table["Metric"] = ext_table["Metric"].map(latex_escape)
+ext_table["Value"] = ext_table["Value"].map(latex_escape)
+table_latex = latex_table(
+    ext_table,
+    caption="Extended MCP challenge simulation summary statistics. Source: data/mcp\\_simulation\\_extended/summary.json.",
+    label="tbl-extended-sim-summary",
+    column_format="lr",
+)
+readable = table_latex.replace(
+    r"\begin{tabular}",
+    r"\begingroup" "\n" r"\small" "\n"
+    r"\setlength{\tabcolsep}{4pt}" "\n"
+    r"\renewcommand{\arraystretch}{1.15}" "\n"
+    r"\begin{tabular}",
+)
+readable = readable.replace(r"\end{tabular}", r"\end{tabular}" "\n" r"\endgroup")
+print(readable)
+```
+
+The simulation passes all six MCP go/no-go criteria (`gonogo\_pass\_count = 6`), including win rate (72.3\%, above the 50\% threshold that the 27-day settlement-only run failed).
+
+## Equity Curve and Daily PnL
+
+Figure \ref{fig-extended-equity} shows bankroll evolution over the 83-day window. Bankroll rises from \$100 to \$179.31 with shallow drawdowns (maximum \$8.12, 5.9\% of peak). The \$70 elimination zone is never approached; minimum bankroll remains at the \$100 starting level throughout. A vertical dashed line marks the IS/OOS boundary (19 May): the IS period contributes the majority of trading days and cumulative PnL, while the OOS+fresh segment confirms that positive performance persists on uncontaminated data. Compare with Figure \ref{fig-mcp-equity-curve} (Section 8), which covers only the OOS+fresh window at settlement-only exits.
+
+```{python}
+#| label: fig-extended-equity
+#| output: asis
+fig, ax = plt.subplots(figsize=(8, 4))
+dates = pd.to_datetime(ext_daily["date"])
+bankroll = ext_daily["bankroll_cents"] / 100.0
+ax.plot(dates.to_numpy(), bankroll.to_numpy(), color=PALETTE["blue"], linewidth=1.8)
+for level, label in [(100, "Start"), (85, "Reduced sizing"), (70, "Elimination")]:
+    ax.axhline(level, color=PALETTE["grey"], linestyle="--", linewidth=0.9, alpha=0.8)
+    ax.text(dates.iloc[-1], level, f"  {label}", va="center", fontsize=8, color=PALETTE["grey"])
+ax.axhspan(0, 70, facecolor=PALETTE["grey"], alpha=0.12)
+ax.axvline(IS_OOS_BOUNDARY, color=PALETTE["orange"], linestyle="--", linewidth=1.2, alpha=0.9)
+mid_is = dates[dates <= IS_OOS_BOUNDARY].median()
+mid_oos = dates[dates > IS_OOS_BOUNDARY].median()
+ax.text(mid_is, ax.get_ylim()[1] * 0.95, "IS period", ha="center", fontsize=8, color=PALETTE["orange"])
+ax.text(mid_oos, ax.get_ylim()[1] * 0.95, "OOS period", ha="center", fontsize=8, color=PALETTE["orange"])
+ax.set_title("Extended MCP simulation: equity curve")
+ax.set_xlabel("Date")
+ax.set_ylabel("Bankroll ($)")
+fig.autofmt_xdate(rotation=30)
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_equity_curve.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Extended MCP simulation equity curve with IS/OOS boundary (19 May 2026), elimination threshold, and reduced-sizing line.",
+    "fig-extended-equity",
+    width="100%",
+)
+```
+
+Figure \ref{fig-extended-daily-pnl} shows daily net PnL. PnL is positive on 52 of 70 trading days (74\%). The best day was 1 April 2026 (\$7.53, New York City); the worst was 5 May 2026 (\$-5.51, Houston). No single day threatens the \$6 daily loss cap in aggregate, though individual city losses can be larger when multiple trades cluster on one day.
+
+```{python}
+#| label: fig-extended-daily-pnl
+#| output: asis
+fig, ax = plt.subplots(figsize=(8, 4))
+dates = pd.to_datetime(ext_daily["date"])
+pnl = ext_daily["daily_pnl_cents"]
+colors = [FIG_COLORS["green"] if v >= 0 else FIG_COLORS["red"] for v in pnl]
+ax.bar(dates.to_numpy(), pnl.to_numpy(), color=colors, width=0.8)
+ax.axhline(0, color=PALETTE["grey"], linewidth=0.8)
+ax.axvline(IS_OOS_BOUNDARY, color=PALETTE["orange"], linestyle="--", linewidth=1.2, alpha=0.9)
+ax.set_title("Extended MCP simulation: daily PnL")
+ax.set_xlabel("Date")
+ax.set_ylabel("Daily PnL (cents)")
+fig.autofmt_xdate(rotation=30)
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_daily_pnl.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Daily net PnL for the extended MCP simulation with IS/OOS boundary marked.",
+    "fig-extended-daily-pnl",
+    width="100%",
+)
+```
+
+## Exit Strategy Performance
+
+Table \ref{tbl-extended-exit-breakdown} decomposes performance by exit type. Source: `data/mcp\_simulation\_extended/trades.parquet`.
+
+```{python}
+#| label: tbl-extended-exit-breakdown
+#| output: asis
+exit_rows = []
+for exit_type, group in ext_trades.groupby("exit_type", sort=False):
+    exit_rows.append(
+        {
+            "Exit type": latex_escape(str(exit_type).replace("_", r"\_")),
+            "N trades": latex_escape(str(len(group))),
+            "Win rate": latex_escape(f"{(group['net_pnl_cents'] > 0).mean():.1%}"),
+            "Mean PnL (c)": latex_escape(f"{group['net_pnl_cents'].mean():.1f}"),
+            "Total PnL (c)": latex_escape(f"{group['net_pnl_cents'].sum():.0f}"),
+        }
+    )
+exit_table = pd.DataFrame(exit_rows)
+table_latex = latex_table(
+    exit_table,
+    caption="Exit type breakdown for the extended MCP simulation. Source: data/mcp\\_simulation\\_extended/trades.parquet.",
+    label="tbl-extended-exit-breakdown",
+    column_format="lrrrr",
+)
+print(compact_latex_table(table_latex))
+```
+
+Figure \ref{fig-extended-pnl-dist} shows the PnL distribution by exit type. Profit-target exits cluster in the +\$0.50 to +\$3.75 range per trade (15--75 cents per contract at 5 contracts), reflecting reliable small wins. Settlement exits show a wider distribution with both large wins (contracts paying \$1.00) and full losses.
+
+```{python}
+#| label: fig-extended-pnl-dist
+#| output: asis
+fig, axes = plt.subplots(1, 2, figsize=(8, 4), sharey=True)
+for ax, exit_type, color in zip(
+    axes,
+    ["profit_target_15c", "settlement"],
+    [PALETTE["blue"], PALETTE["orange"]],
+):
+    subset = ext_trades.loc[ext_trades["exit_type"].eq(exit_type), "net_pnl_cents"]
+    ax.hist(subset, bins=20, color=color, edgecolor="white", alpha=0.85)
+    ax.axvline(0, color=PALETTE["grey"], linestyle="--", linewidth=0.8)
+    ax.set_title(exit_type.replace("_", " "))
+    ax.set_xlabel("Net PnL (cents)")
+    ax.set_ylabel("Count")
+axes[0].set_ylabel("Count")
+fig.suptitle("Trade PnL distribution by exit type", fontsize=11, y=1.02)
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_pnl_distribution.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Histogram of per-trade net PnL by exit type: profit\\_target\\_15c (left) versus settlement (right).",
+    "fig-extended-pnl-dist",
+    width="100%",
+)
+```
+
+The profit-target exit converts settlement uncertainty into reliable small wins: 135 trades (65.5\% of total) exit early with approximately 83\% win rate within that subset. Settlement holds the remaining 71 trades where the 15-cent target was not reached, carrying both large wins and full losses. This tradeoff is consistent with Section 9 (Table \ref{tbl-intraday-exit}): on OOS data, profit\_target\_15c raised win rate from 49\% to 74.5\% while reducing total PnL from \$28.51 to \$24.83 due to double fees and capped upside. The 15-cent target was validated on OOS in Section 9 but was not re-optimised on this extended 83-day window.
+
+## Per-City Breakdown
+
+Table \ref{tbl-extended-per-city} reports per-city performance sorted by total PnL. Oklahoma City is the sole net-negative contributor (\$-12.42 over 28 trades, 39.3\% win rate).
+
+```{python}
+#| label: tbl-extended-per-city
+#| output: asis
+city_rows = []
+for city, group in ext_trades.groupby("city"):
+    city_rows.append(
+        {
+            "City": city,
+            "N trades": len(group),
+            "Win rate": (group["net_pnl_cents"] > 0).mean(),
+            "Total PnL (c)": group["net_pnl_cents"].sum(),
+            "Mean edge": group["edge"].mean(),
+            "N profit-target": (group["exit_type"] == "profit_target_15c").sum(),
+            "N settlement": (group["exit_type"] == "settlement").sum(),
+        }
+    )
+city_df = pd.DataFrame(city_rows).sort_values("Total PnL (c)", ascending=False)
+display_city = city_df.copy()
+display_city["City"] = display_city["City"].str.replace("_", " ").str.title().map(latex_escape)
+for col in ("N trades", "N profit-target", "N settlement"):
+    display_city[col] = display_city[col].map(lambda v: latex_escape(str(int(v))))
+display_city["Win rate"] = display_city["Win rate"].map(lambda v: latex_escape(f"{v:.1%}"))
+display_city["Total PnL (c)"] = display_city["Total PnL (c)"].map(lambda v: latex_escape(f"{v:.0f}"))
+display_city["Mean edge"] = display_city["Mean edge"].map(lambda v: latex_escape(f"{v:.3f}"))
+display_city = display_city.rename(
+    columns={"N profit-target": "N PT", "N settlement": "N settle"}
+)
+table_latex = latex_table(
+    display_city,
+    caption="Per-city performance for the extended MCP simulation. Oklahoma City is net negative. Source: data/mcp\\_simulation\\_extended/trades.parquet.",
+    label="tbl-extended-per-city",
+    column_format="lrrrrrr",
+    note=r"Oklahoma City: net negative (\$-12.42); consider excluding from live deployment.",
+)
+print(compact_latex_table(table_latex))
+```
+
+Figure \ref{fig-extended-per-city} shows cumulative PnL by city. Houston contributes approximately 50\% of total gains (\$39.55). Phoenix, New York City, Chicago Midway, and Los Angeles are consistently positive. San Francisco is marginal (\$0.37). These results are broadly consistent with the OOS grid ranking in Table \ref{tbl-trackb-grid-oos}, where Houston, Phoenix, and Chicago Midway also ranked among the strongest cities.
+
+```{python}
+#| label: fig-extended-per-city
+#| output: asis
+fig, ax = plt.subplots(figsize=(8, 4))
+city_totals = ext_trades.groupby("city")["net_pnl_cents"].sum()
+for city in sorted(ext_trades["city"].unique()):
+    city_trades = ext_trades.loc[ext_trades["city"].eq(city)].copy()
+    city_trades["_date"] = pd.to_datetime(city_trades["event_date"])
+    cumulative = city_trades.groupby("_date", sort=True)["net_pnl_cents"].sum().cumsum()
+    color = FIG_COLORS["green"] if city_totals[city] >= 0 else FIG_COLORS["red"]
+    ax.plot(cumulative.index.to_numpy(), cumulative.to_numpy(), linewidth=1.5, label=city.replace("_", " "), color=color)
+ax.axhline(0, color=PALETTE["grey"], linestyle=":", linewidth=0.8)
+ax.axvline(IS_OOS_BOUNDARY, color=PALETTE["orange"], linestyle="--", linewidth=1.0, alpha=0.8)
+ax.set_title("Per-city cumulative PnL")
+ax.set_xlabel("Event date")
+ax.set_ylabel("Cumulative net PnL (cents)")
+ax.legend(fontsize=7, loc="best", ncol=2)
+fig.autofmt_xdate(rotation=30)
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_per_city_cumulative.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Per-city cumulative net PnL curves; green for net-positive cities, red for net-negative (Oklahoma City).",
+    "fig-extended-per-city",
+    width="100%",
+)
+```
+
+Oklahoma City's net-negative result despite 28 trades warrants caution for live city selection. The model may be miscalibrated for Oklahoma City's microclimate or the city's bucket structure may offer fewer profitable early-exit opportunities. San Francisco's marginal performance (+37 cents over 14 trades) suggests it contributes little incremental value.
+
+## Trade Timing and Volume
+
+Figure \ref{fig-extended-heatmap} shows trade outcomes by city and date across the full window. The IS period (left of the boundary) shows denser trading activity; the OOS+fresh period maintains regular coverage without large gaps.
+
+```{python}
+#| label: fig-extended-heatmap
+#| output: asis
+market_parts = []
+for name in ["threshold_opt", "time_holdout"]:
+    path = SPLIT_DIR / f"{name}.parquet"
+    if path.exists():
+        part = pd.read_parquet(path, columns=["city", "event_date"])
+        market_parts.append(part)
+if market_parts:
+    market_presence = pd.concat(market_parts, ignore_index=True)
+    market_presence["city"] = market_presence["city"].astype(str).str.lower().str.replace(" ", "_")
+    market_presence["event_date"] = pd.to_datetime(market_presence["event_date"]).dt.strftime("%Y-%m-%d")
+else:
+    market_presence = ext_trades[["city", "event_date"]].drop_duplicates()
+
+calendar_dates = sorted(ext_daily["date"].astype(str).unique())
+cities = sorted(market_presence["city"].dropna().unique())
+market_days = set(zip(market_presence["city"].astype(str), market_presence["event_date"].astype(str)))
+trade_lookup = {
+    (str(r["city"]), str(r["event_date"])): float(r["net_pnl_cents"])
+    for _, r in ext_trades.iterrows()
+}
+values = np.full((len(cities), len(calendar_dates)), np.nan)
+for i, city in enumerate(cities):
+    for j, day in enumerate(calendar_dates):
+        if (city, day) not in market_days:
+            values[i, j] = 2.0
+        elif (city, day) not in trade_lookup:
+            values[i, j] = 0.0
+        elif trade_lookup[(city, day)] > 0:
+            values[i, j] = 1.0
+        else:
+            values[i, j] = -1.0
+
+from matplotlib.colors import ListedColormap
+
+cmap = ListedColormap([FIG_COLORS["red"], "#E6E6E6", "#ffffff", FIG_COLORS["green"]])
+fig, ax = plt.subplots(figsize=(8, 4))
+im = ax.imshow(values, aspect="auto", cmap=cmap, vmin=-1, vmax=2, interpolation="nearest")
+boundary_idx = next((j for j, d in enumerate(calendar_dates) if d >= "2026-05-19"), None)
+if boundary_idx is not None:
+    ax.axvline(boundary_idx - 0.5, color=PALETTE["orange"], linestyle="--", linewidth=1.2)
+    ax.text(boundary_idx - 0.5, -0.8, "IS/OOS", ha="center", fontsize=7, color=PALETTE["orange"])
+ax.set_yticks(range(len(cities)))
+ax.set_yticklabels([c.replace("_", " ") for c in cities], fontsize=8)
+step = max(1, len(calendar_dates) // 12)
+xticks = list(range(0, len(calendar_dates), step))
+ax.set_xticks(xticks)
+ax.set_xticklabels([calendar_dates[i] for i in xticks], rotation=45, ha="right", fontsize=7)
+ax.set_title("Trade outcomes by city and date")
+ax.set_xlabel("Date")
+ax.set_ylabel("City")
+plt.colorbar(im, ax=ax, ticks=[-1, 0, 2, 1], label="Outcome")
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_trade_heatmap.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Trade outcome heatmap: green = win, red = loss, grey = no trade, white = no market data; IS/OOS boundary marked.",
+    "fig-extended-heatmap",
+    width="100%",
+)
+```
+
+Figure \ref{fig-extended-trades-per-day} shows the distribution of trades per calendar day. The observed mean of 2.48 trades/day projects to 149 trades over 60 days, well above the 80-trade MCP minimum (vertical line at 1.33 trades/day).
+
+```{python}
+#| label: fig-extended-trades-per-day
+#| output: asis
+fig, ax = plt.subplots(figsize=(8, 4))
+counts = ext_daily["n_trades"].astype(int)
+max_trades = int(counts.max())
+bins = np.arange(-0.5, max_trades + 1.5, 1)
+ax.hist(counts, bins=bins, color=PALETTE["blue"], edgecolor="white", alpha=0.85)
+ax.axvline(1.33, color=PALETTE["orange"], linestyle="--", linewidth=1.2, label="80 trades / 60 days")
+ax.set_title("Trades per calendar day")
+ax.set_xlabel("Number of trades")
+ax.set_ylabel("Count of days")
+ax.legend(fontsize=8)
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_trades_per_day.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Distribution of trades per calendar day; dashed line marks the 1.33 trades/day pace required for 80 trades in 60 days.",
+    "fig-extended-trades-per-day",
+    width="100%",
+)
+```
+
+Table \ref{tbl-extended-weekly} summarises performance by ISO week. Early IS weeks (late March) show sparse activity as the model ramps up; no week is entirely without trades once coverage stabilises in April.
+
+```{python}
+#| label: tbl-extended-weekly
+#| output: asis
+weekly = ext_daily.copy()
+weekly["_date"] = pd.to_datetime(weekly["date"])
+weekly["iso_week"] = weekly["_date"].dt.isocalendar().year.astype(str) + "-W" + weekly["_date"].dt.isocalendar().week.astype(str).str.zfill(2)
+week_rows = []
+for week, group in weekly.groupby("iso_week", sort=True):
+    traded = group.loc[group["n_trades"] > 0]
+    win_rate = (traded["daily_pnl_cents"] > 0).mean() if len(traded) else float("nan")
+    week_rows.append(
+        {
+            "Week": week,
+            "N trades": int(group["n_trades"].sum()),
+            "Total PnL (c)": group["daily_pnl_cents"].sum(),
+            "Win rate": win_rate,
+            "Bankroll end (USD)": group.sort_values("_date")["bankroll_cents"].iloc[-1] / 100.0,
+        }
+    )
+week_df = pd.DataFrame(week_rows)
+display_week = week_df.copy()
+display_week["Week"] = display_week["Week"].map(latex_escape)
+display_week["N trades"] = display_week["N trades"].map(lambda v: latex_escape(str(int(v))))
+display_week["Total PnL (c)"] = display_week["Total PnL (c)"].map(lambda v: latex_escape(f"{v:.0f}"))
+display_week["Win rate"] = display_week["Win rate"].map(
+    lambda v: latex_escape(f"{v:.1%}" if pd.notna(v) else "n/a")
+)
+display_week["Bankroll end (USD)"] = display_week["Bankroll end (USD)"].map(lambda v: latex_escape(f"{v:.2f}"))
+table_latex = latex_table(
+    display_week,
+    caption="Weekly summary for the extended MCP simulation. Source: data/mcp\\_simulation\\_extended/daily\\_log.parquet.",
+    label="tbl-extended-weekly",
+    column_format="lrrrr",
+)
+print(compact_latex_table(table_latex))
+```
+
+Trade pacing is robust: 70 of 83 calendar days include at least one trade, and the projected 60-day count of 149 trades exceeds the MCP minimum by a wide margin. Weeks with zero or one trade occur primarily in the IS early window when fewer cities had complete forecast coverage; this pattern does not persist into the OOS+fresh period.
+
+## Edge Analysis
+
+Figure \ref{fig-extended-edge-pnl} plots edge magnitude against realised PnL per trade. The relationship is weak: intraday exits decouple realised PnL from settlement outcome, so trades with large edge can exit early at modest profit while trades with smaller edge may hold to settlement for larger (positive or negative) payoffs.
+
+```{python}
+#| label: fig-extended-edge-pnl
+#| output: asis
+fig, ax = plt.subplots(figsize=(8, 4))
+resolved = ext_trades["resolved"].astype(bool)
+colors = np.where(resolved, FIG_COLORS["green"], FIG_COLORS["red"])
+ax.scatter(
+    ext_trades["edge"].to_numpy(),
+    ext_trades["net_pnl_cents"].to_numpy(),
+    c=colors,
+    alpha=0.6,
+    s=25,
+    edgecolors="none",
+)
+ax.axhline(0, color=PALETTE["grey"], linestyle="--", linewidth=0.8)
+ax.axvline(0.037, color=PALETTE["orange"], linestyle="--", linewidth=1.0, label=r"$E^*=0.037$")
+ax.set_title("Edge vs realised PnL per trade")
+ax.set_xlabel("Edge (model prob minus entry price)")
+ax.set_ylabel("Net PnL (cents)")
+ax.legend(fontsize=8)
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_edge_vs_pnl.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Scatter of model edge versus per-trade net PnL; green = bucket resolved YES, red = resolved NO.",
+    "fig-extended-edge-pnl",
+    width="100%",
+)
+```
+
+Figure \ref{fig-extended-calibration} assesses model calibration: predicted bucket probabilities versus observed settlement win rates. Points near the 45-degree line indicate well-calibrated predictions; systematic deviation below the line suggests overconfidence.
+
+```{python}
+#| label: fig-extended-calibration
+#| output: asis
+cal = ext_trades.copy()
+cal["model_prob"] = pd.to_numeric(cal["model_prob"], errors="coerce")
+cal["resolved"] = cal["resolved"].astype(bool)
+cal = cal.dropna(subset=["model_prob"])
+cal["prob_bin"] = pd.cut(cal["model_prob"], bins=5)
+cal_summary = cal.groupby("prob_bin", observed=True).agg(
+    predicted=("model_prob", "mean"),
+    observed=("resolved", "mean"),
+    n=("resolved", "count"),
+)
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.plot([0, 1], [0, 1], color=PALETTE["grey"], linestyle="--", linewidth=1, label="Perfect calibration")
+ax.scatter(cal_summary["predicted"], cal_summary["observed"], color=PALETTE["blue"], s=60, zorder=3)
+for _, row in cal_summary.iterrows():
+    ax.annotate(int(row["n"]), (row["predicted"], row["observed"]), fontsize=7, ha="center", va="bottom")
+ax.set_title("Model calibration (settlement outcomes)")
+ax.set_xlabel("Predicted probability (model)")
+ax.set_ylabel("Observed win rate (resolved YES)")
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.legend(fontsize=8)
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_calibration.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Calibration plot: predicted bucket probability versus observed settlement win rate; annotations show trade count per bin.",
+    "fig-extended-calibration",
+    width="100%",
+)
+```
+
+Trades with larger edge tend to be slightly more profitable on average, but the profit-target exit compresses the upper tail of PnL. Model calibration is reasonable in the middle probability bins but may overstate win probability for high-confidence predictions; this is partially mitigated by the intraday exit, which locks in gains before settlement uncertainty resolves.
+
+## Risk Metrics
+
+Figure \ref{fig-extended-drawdown} plots drawdown from running peak bankroll. The deepest episode reaches \$8.12 (5.9\% of peak), far below the 30\% MCP elimination threshold.
+
+```{python}
+#| label: fig-extended-drawdown
+#| output: asis
+fig, ax = plt.subplots(figsize=(8, 4))
+dd = ext_daily["drawdown_cents"] / 100.0
+dates = pd.to_datetime(ext_daily["date"])
+ax.fill_between(dates.to_numpy(), dd.to_numpy(), 0, color=FIG_COLORS["red"], alpha=0.3)
+ax.plot(dates.to_numpy(), dd.to_numpy(), color=FIG_COLORS["red"], linewidth=1.2)
+ax.axvline(IS_OOS_BOUNDARY, color=PALETTE["orange"], linestyle="--", linewidth=1.0, alpha=0.8)
+ax.set_title("Drawdown from running peak bankroll")
+ax.set_xlabel("Date")
+ax.set_ylabel("Drawdown ($)")
+fig.autofmt_xdate(rotation=30)
+fig.tight_layout()
+fig_path = FIGURE_DIR / "extended_sim_drawdown.png"
+fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+plt.close(fig)
+emit_figure(
+    fig_path,
+    "Drawdown from running peak bankroll over the extended simulation window.",
+    "fig-extended-drawdown",
+    width="100%",
+)
+```
+
+Table \ref{tbl-extended-drawdown-episodes} identifies the three largest drawdown episodes.
+
+```{python}
+#| label: tbl-extended-drawdown-episodes
+#| output: asis
+dd_df = ext_daily.copy()
+dd_df["_date"] = pd.to_datetime(dd_df["date"])
+dd_df["peak"] = dd_df["bankroll_cents"].cummax()
+dd_df["dd"] = dd_df["bankroll_cents"] - dd_df["peak"]
+in_drawdown = dd_df["dd"] < 0
+episodes = []
+if in_drawdown.any():
+    group_id = (in_drawdown != in_drawdown.shift()).cumsum()
+    for _, ep in dd_df.loc[in_drawdown].groupby(group_id):
+        start = ep["_date"].iloc[0]
+        trough_idx = ep["dd"].idxmin()
+        trough_date = ep.loc[trough_idx, "_date"]
+        depth = ep["dd"].min()
+        after = dd_df.loc[dd_df["_date"] > trough_date]
+        recovered = after.loc[after["dd"] >= -1e-6]
+        recovery_date = recovered["_date"].iloc[0] if not recovered.empty else pd.NaT
+        duration = (trough_date - start).days + 1
+        episodes.append(
+            {
+                "Start": start.strftime("%Y-%m-%d"),
+                "Trough": trough_date.strftime("%Y-%m-%d"),
+                "Depth (c)": depth,
+                "Recovery": recovery_date.strftime("%Y-%m-%d") if pd.notna(recovery_date) else "open",
+                "Duration (d)": duration,
+            }
+        )
+episodes = sorted(episodes, key=lambda x: x["Depth (c)"])[:3]
+dd_table = pd.DataFrame(episodes)
+if not dd_table.empty:
+    display_dd = dd_table.copy()
+    for col in display_dd.columns:
+        display_dd[col] = display_dd[col].map(
+            lambda v: latex_escape(f"{v:.0f}" if isinstance(v, float) else str(v))
+        )
+    table_latex = latex_table(
+        display_dd,
+        caption="Top three drawdown episodes in the extended MCP simulation. Source: data/mcp\\_simulation\\_extended/daily\\_log.parquet.",
+        label="tbl-extended-drawdown-episodes",
+        column_format="llrrl",
+    )
+    print(compact_latex_table(table_latex))
+else:
+    print("No drawdown episodes identified.")
+```
+
+The \$70 elimination threshold was never in danger: minimum bankroll remained at \$100 throughout. Maximum drawdown was 5.9\% versus the 30\% MCP limit. Drawdowns recovered within days rather than weeks; the worst losing streak was 3 consecutive days (versus 6 in the 27-day settlement-only simulation). Conservative sizing (flat 5 contracts, \$6 daily cap) kept capital at risk bounded even during the deepest episode.
+
+## Comparison to Prior Simulations
+
+Table \ref{tbl-extended-comparison} compares the extended 83-day simulation against the prior 27-day settlement-only run (Section 8, Table \ref{tbl-mcp-simulation}).
+
+```{python}
+#| label: tbl-extended-comparison
+#| output: asis
+with open(PRIOR_MCP_PATH, encoding="utf-8") as handle:
+    prior = json.load(handle)
+
+def _metric_row(label, prior_val, ext_val):
+    return {"Metric": latex_escape(label), "27-day settlement-only": latex_escape(prior_val), "83-day with exits": latex_escape(ext_val)}
+
+comp_rows = [
+    _metric_row("Period", f"{prior['start_date']} to {prior['end_date']}", f"{ext['start_date']} to {ext['end_date']}"),
+    _metric_row("N trades", str(prior["n_trades"]), str(ext["n_trades"])),
+    _metric_row("Total PnL", f"${prior['total_pnl_dollars']:.2f}", f"${ext['total_pnl_dollars']:.2f}"),
+    _metric_row("Sharpe", f"{prior['sharpe_annual']:.2f}", f"{ext['sharpe_annual']:.2f}"),
+    _metric_row("Sortino", f"{prior['sortino_annual']:.2f}", f"{ext['sortino_annual']:.2f}"),
+    _metric_row("Max DD", f"${prior['max_drawdown_cents']/100:.2f}", f"${ext['max_drawdown_cents']/100:.2f}"),
+    _metric_row("Win rate", f"{prior['win_rate']:.1%}", f"{ext['win_rate']:.1%}"),
+    _metric_row("Trades/day", f"{prior['trades_per_day']:.2f}", f"{ext['trades_per_day']:.2f}"),
+    _metric_row("Profit factor", f"{prior['profit_factor']:.2f}", f"{ext['profit_factor']:.2f}"),
+]
+comp_table = pd.DataFrame(comp_rows)
+table_latex = latex_table(
+    comp_table,
+    caption="Head-to-head comparison: 27-day settlement-only (Section 8) versus 83-day extended simulation with profit\\_target\\_15c exits.",
+    label="tbl-extended-comparison",
+    column_format="lrr",
+)
+print(compact_latex_table(table_latex))
+```
+
+The extended simulation confirms and strengthens the prior 27-day result. Over the uncontaminated OOS+fresh slice (57 trades, approximately \$31 PnL with intraday exits versus \$25.13 settlement-only), performance is directionally consistent with Section 8 while the addition of profit\_target\_15c raises win rate from 43.9\% to 72.3\% over the full window---the difference between FAIL and PASS on the MCP win-rate criterion. The 83-day window exceeds the 60-day challenge duration, providing a longer track record for MCP constraint testing. The IS portion extends that track record further, though edge estimates on IS data should be treated as upwardly biased.
+
+## Deployment Implications
+
+Track-B with profit\_target\_15c is confirmed as the deployment strategy for Polymarket go-live on 24 June 2026. The extended simulation passes all six MCP go/no-go criteria: not eliminated, projected trades above 80, positive Sharpe, maximum drawdown below 30\%, win rate above 50\%, and PSR(0) above 95\%.
+
+Key risks for live trading remain:
+
+- **Settlement source mismatch:** Polymarket uses Weather Underground rather than NWS CLI for resolution, introducing an estimated ~1°F systematic bias relative to the Kalshi backtest data.
+- **Station mismatches:** New York City and Chicago require retraining on Polymarket's specific station identifiers.
+- **Liquidity and fills:** Polymarket CLOB depth and fill rates are untested at scale; the backtest assumes taker execution at `yes_mid_close`.
+- **City selection:** Oklahoma City's net-negative performance in this simulation suggests excluding or down-weighting it in live deployment.
+
+The intraday exit improved win rate from approximately 44\% (settlement-only, Section 8) to 72.3\%, converting a failing MCP criterion into a passing one. Conservative sizing (flat 5 contracts, \$6 daily cap) kept maximum drawdown at 5.9\% throughout the 83-day window. Trade count pacing (2.48 trades/day, projecting 149 trades over 60 days) provides substantial margin above the 80-trade minimum.
+
+The profit\_target\_15c rule is deployed via `scripts/market_monitor.py` (Section 9.5), running every 5 minutes during market hours.
+
+## Caveats
+
+Several limitations apply to this backtest:
+
+1. **IS contamination:** 60 of 83 days use IS data; $E^* = 0.037$ was calibrated on IS. OOS+fresh results (May 19--Jun 14) are the cleanest performance read.
+2. **Execution assumptions:** Backtest assumes taker execution at `yes_mid_close`. Live Polymarket trading will use maker orders with potentially different fill prices and zero maker fees.
+3. **Fee structure:** Polymarket's fee model differs from Kalshi (maker zero vs taker fees). Intraday exit fee drag may be lower live if exits are maker-filled.
+4. **No slippage or latency:** Order book depth, partial fills, and signal-to-order delay are not modelled.
+5. **Exit parameter:** The 15-cent profit target was validated on OOS data in Section 9 but was not re-optimised on this extended 83-day window.
+6. **Data gaps:** Supplemental CSV gap fill extends the window beyond fresh validation; coverage may differ from live Polymarket market availability.

@@ -1,0 +1,170 @@
+[
+  {
+    "category": "ACTIVE",
+    "city": "chicago_midway",
+    "event_date": "2026-06-17",
+    "yes_token_id": "7316563335498730385838767291824523411883612485039640288254670120582119586317",
+    "startTs": 1781067600,
+    "endTs": 1781758800,
+    "fidelities_tested": [
+      {
+        "fidelity": 60,
+        "n_points": 48,
+        "earliest_t": 1781575204,
+        "latest_t": 1781741883,
+        "time_span_days": 1.9291550925925927
+      },
+      {
+        "fidelity": 5,
+        "n_points": 567,
+        "earliest_t": 1781572203,
+        "latest_t": 1781741883,
+        "time_span_days": 1.9638888888888888
+      }
+    ],
+    "n_points": 48,
+    "earliest_t": 1781575204,
+    "latest_t": 1781741883,
+    "time_span_days": 1.9291550925925927
+  },
+  {
+    "category": "ACTIVE",
+    "city": "new_york_city",
+    "event_date": "2026-06-17",
+    "yes_token_id": "62768491022006966367746735855479484404571738399390756737110244478230122167173",
+    "startTs": 1781064000,
+    "endTs": 1781755200,
+    "fidelities_tested": [
+      {
+        "fidelity": 60,
+        "n_points": 48,
+        "earliest_t": 1781575205,
+        "latest_t": 1781741884,
+        "time_span_days": 1.9291550925925927
+      },
+      {
+        "fidelity": 5,
+        "n_points": 565,
+        "earliest_t": 1781572805,
+        "latest_t": 1781741884,
+        "time_span_days": 1.9569328703703703
+      }
+    ],
+    "n_points": 48,
+    "earliest_t": 1781575205,
+    "latest_t": 1781741884,
+    "time_span_days": 1.9291550925925927
+  },
+  {
+    "category": "RECENTLY_CLOSED",
+    "city": "san_francisco",
+    "event_date": "2026-06-16",
+    "yes_token_id": "97547820151851934385624361795183414202627498313853169182652066594899114029962",
+    "startTs": 1780988400,
+    "endTs": 1781679600,
+    "fidelities_tested": [
+      {
+        "fidelity": 60,
+        "n_points": 53,
+        "earliest_t": 1781488804,
+        "latest_t": 1781676007,
+        "time_span_days": 2.166701388888889
+      },
+      {
+        "fidelity": 5,
+        "n_points": 643,
+        "earliest_t": 1781486704,
+        "latest_t": 1781679305,
+        "time_span_days": 2.229178240740741
+      }
+    ],
+    "n_points": 53,
+    "earliest_t": 1781488804,
+    "latest_t": 1781676007,
+    "time_span_days": 2.166701388888889
+  },
+  {
+    "category": "RECENTLY_CLOSED",
+    "city": "los_angeles",
+    "event_date": "2026-06-16",
+    "yes_token_id": "31045695516170541649868340816580053599816366338902514528700474373479801197184",
+    "startTs": 1780988400,
+    "endTs": 1781679600,
+    "fidelities_tested": [
+      {
+        "fidelity": 60,
+        "n_points": 53,
+        "earliest_t": 1781488806,
+        "latest_t": 1781676014,
+        "time_span_days": 2.1667592592592593
+      },
+      {
+        "fidelity": 5,
+        "n_points": 644,
+        "earliest_t": 1781486405,
+        "latest_t": 1781679306,
+        "time_span_days": 2.232650462962963
+      }
+    ],
+    "n_points": 53,
+    "earliest_t": 1781488806,
+    "latest_t": 1781676014,
+    "time_span_days": 2.1667592592592593
+  },
+  {
+    "category": "OLD_CLOSED",
+    "city": "austin",
+    "event_date": "2026-03-29",
+    "yes_token_id": "82040236806623927311189387894704650848975911336340930598600527810112658803858",
+    "startTs": 1774155600,
+    "endTs": 1774846800,
+    "fidelities_tested": [
+      {
+        "fidelity": 60,
+        "n_points": 104,
+        "earliest_t": 1774436427,
+        "latest_t": 1774814446,
+        "time_span_days": 4.375219907407407
+      },
+      {
+        "fidelity": 5,
+        "n_points": 1262,
+        "earliest_t": 1774435224,
+        "latest_t": 1774815048,
+        "time_span_days": 4.396111111111111
+      }
+    ],
+    "n_points": 104,
+    "earliest_t": 1774436427,
+    "latest_t": 1774814446,
+    "time_span_days": 4.375219907407407
+  },
+  {
+    "category": "OLD_CLOSED",
+    "city": "houston",
+    "event_date": "2026-03-27",
+    "yes_token_id": "1867624120624290671389950627404220173087725768371120450975508357869679387891",
+    "startTs": 1773982800,
+    "endTs": 1774674000,
+    "fidelities_tested": [
+      {
+        "fidelity": 60,
+        "n_points": 107,
+        "earliest_t": 1774263634,
+        "latest_t": 1774656054,
+        "time_span_days": 4.541898148148148
+      },
+      {
+        "fidelity": 5,
+        "n_points": 1313,
+        "earliest_t": 1774263032,
+        "latest_t": 1774657539,
+        "time_span_days": 4.56605324074074
+      }
+    ],
+    "n_points": 107,
+    "earliest_t": 1774263634,
+    "latest_t": 1774656054,
+    "time_span_days": 4.541898148148148
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "bankroll_cents": 10000,
+  "trades_placed": 0,
+  "days_elapsed": 0,
+  "start_date": null,
+  "cumulative_pnl_cents": 0,
+  "peak_bankroll_cents": 10000,
+  "max_drawdown_cents": 0,
+  "daily_history": []
+}

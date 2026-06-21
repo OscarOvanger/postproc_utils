@@ -1012,3 +1012,107 @@ class PolymarketClient:
     def cancel_order(self, order_id: str) -> dict[str, Any]:
         clob = _clob_types()
         return self.client.cancel_order(clob["OrderPayload"](orderID=order_id))
+
+    def _normalize_order_id(self, order: dict[str, Any]) -> str | None:
+        order_id = order.get("id") or order.get("orderID")
+        return str(order_id) if order_id else None
+
+    def _order_fill_fields(self, order: dict[str, Any]) -> dict[str, Any]:
+        original = _to_float(
+            order.get("original_size") or order.get("size") or order.get("size_matched")
+        )
+        matched = _to_float(order.get("size_matched") or order.get("size"))
+        fill_price = _to_float(order.get("price") or order.get("avg_price"))
+        return {
+            "original_size": original,
+            "size_matched": matched,
+            "fill_price": fill_price,
+        }
+
+    def get_order_status(
+        self,
+        order_id: str,
+        *,
+        token_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Return fill status for a resting or completed order."""
+        target_id = str(order_id)
+        open_orders = self.client.get_open_orders()
+        for order in open_orders:
+            if not isinstance(order, dict):
+                continue
+            current_id = self._normalize_order_id(order)
+            if current_id != target_id:
+                continue
+            fields = self._order_fill_fields(order)
+            original = fields["original_size"] or 0.0
+            matched = fields["size_matched"] or 0.0
+            if original > 0 and matched >= original:
+                return {
+                    "status": "filled",
+                    "order_id": target_id,
+                    "fill_price": fields["fill_price"],
+                    "size_matched": matched,
+                }
+            return {
+                "status": "open",
+                "order_id": target_id,
+                "fill_price": fields["fill_price"],
+                "size_matched": matched,
+            }
+
+        if hasattr(self.client, "get_trades_paginated") and token_id:
+            try:
+                from py_clob_client_v2.clob_types import TradeParams
+            except ImportError:
+                TradeParams = None  # type: ignore[misc, assignment]
+            if TradeParams is not None:
+                params = TradeParams(asset_id=token_id)
+                cursor = None
+                for _ in range(5):
+                    payload = self.client.get_trades_paginated(
+                        params=params,
+                        next_cursor=cursor,
+                    )
+                    trades = payload.get("trades") if isinstance(payload, dict) else []
+                    for trade in trades or []:
+                        if not isinstance(trade, dict):
+                            continue
+                        trade_order_id = trade.get("order_id") or trade.get("orderID")
+                        if str(trade_order_id) != target_id:
+                            continue
+                        fill_price = _to_float(trade.get("price") or trade.get("avg_price"))
+                        matched = _to_float(trade.get("size") or trade.get("size_matched"))
+                        return {
+                            "status": "filled",
+                            "order_id": target_id,
+                            "fill_price": fill_price,
+                            "size_matched": matched,
+                        }
+                    cursor = payload.get("next_cursor") if isinstance(payload, dict) else None
+                    if not trades or cursor in (None, "LTE="):
+                        break
+
+        return {"status": "unknown", "order_id": target_id}
+
+    def place_taker_sell(
+        self,
+        token_id: str,
+        price: float,
+        size: float,
+        *,
+        tick_size: str = "0.01",
+        neg_risk: bool = True,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Place an immediate taker sell at best bid."""
+        return self.place_order(
+            token_id=token_id,
+            side="SELL",
+            price=price,
+            size=size,
+            tick_size=tick_size,
+            neg_risk=neg_risk,
+            dry_run=dry_run,
+            post_only=False,
+        )

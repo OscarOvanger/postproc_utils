@@ -1,0 +1,15 @@
+[
+  "doy_sin",
+  "doy_cos",
+  "tmax_lag1",
+  "tmax_lag2",
+  "tmax_lag3",
+  "tmax_lag7",
+  "tmax_rollmean_7",
+  "tmax_rollmean_30",
+  "nws_tmax_forecast_f",
+  "nwp_tmax_best_f",
+  "gfs_t2m_afternoon_t1",
+  "gfs_dewpoint_afternoon_t1",
+  "gfs_cloudcover_afternoon_t1"
+]

@@ -1,0 +1,179 @@
+# Pre-Challenge Sprint: Updated Plan (Jun 21-24)
+# Revised Sun Jun 21 afternoon
+
+## Status as of Sun Jun 21 afternoon
+
+DECISION: Track-B confirmed as deployment strategy.
+Sequential Bayesian deferred to Week 2-3.
+
+### Completed (Thu-Sun)
+- [x] Extended 83-day Kalshi backtest with profit_target_15c
+      Sharpe 7.35, $79.31 PnL, 206 trades, 72.3% win rate
+      All 6 MCP GO/NO-GO criteria PASS
+- [x] Polymarket pipeline: Wunderground bias correction (+1.0F per city)
+- [x] Polymarket pipeline: restricted to 4 station-matched cities
+- [x] Polymarket pipeline: market diagnostics, $0.10 price floor
+- [x] Fetch-only test confirmed tradeable markets at 10 AM
+- [x] Polymarket paper trade at 10 AM (Jun 21): 2 trades (HOU, AUS)
+- [x] Kalshi paper trade at 10 AM (Jun 21): 2 trades (LA, HOU)
+- [x] CLOB order book parsing fix (was returning 0.01/0.99 dummy values)
+      Edge now computed against real best_ask. Commit 9f8bae3.
+- [x] Wunderground re-settlement analysis complete:
+      46.5% bucket flip rate, net +$10 PnL impact, 18 outcome changes
+- [x] Auto-trader built and tested (scripts/auto_trader_poly.py)
+      Automated entry + 1-min exit monitoring + state persistence
+- [x] Shared pipeline refactored (src/poly_trading_pipeline.py)
+- [x] NGBoost feature build: 5/18 parquets done (paused, disk space)
+- [x] Settled Kalshi Jun 18 (-92 cents, cumulative -$5.25)
+
+### Outstanding
+- [ ] Disk cleanup (13 GB free, need 30+ GB headroom)
+- [ ] Settle Jun 20 Kalshi paper trades
+- [ ] Settle Jun 21 trades (both platforms, evening)
+- [ ] Set up auto-trader cron for Mon paper testing
+- [ ] Configure Pushover for auto-trader alerts
+- [ ] Verify API credentials work for live order placement
+      (set RUN_LIVE_POST_ONLY_TEST=True, run credential notebook)
+- [ ] Commit and push all changes
+
+---
+
+## Sunday Jun 21 evening -- Remaining tasks
+
+1. Disk cleanup (run Cursor prompt)
+2. Settle Jun 20 Kalshi:
+     .venv/bin/python scripts/settle_daily.py --date 2026-06-20
+3. Set up cron for tomorrow:
+     crontab -e
+     * 10-22 * * * cd ~/Desktop/MCP_Project && .venv/bin/python scripts/auto_trader_poly.py --mode paper 2>&1 >> logs/auto_trader.log
+4. Configure Pushover (optional but recommended):
+     export PUSHOVER_USER_KEY=<your_key>
+     export PUSHOVER_API_TOKEN=<your_token>
+   Add to ~/.zshrc or ~/.bashrc for persistence.
+5. Commit everything and push.
+6. Check Jun 21 settlement results tonight if CLI/Wunderground available.
+
+---
+
+## Monday Jun 22 -- Day 5: Auto-Trader Paper Test Day 1
+
+### Morning (no manual intervention needed)
+The auto-trader cron handles everything:
+- 10:05 AM CT: auto-trader initializes, computes forecasts, places paper entries
+- 10:06+ AM: monitors prices every minute for profit_target_15c exit
+- If exit triggers: logs it with PnL
+
+You can check progress anytime:
+  tail -20 logs/auto_trader.log
+  cat logs/auto_trader_state_2026-06-22.json
+
+### Also run Kalshi paper trade manually (parallel track):
+  .venv/bin/python scripts/run_daily_trade.py \
+    --date 2026-06-22 --mode paper --bankroll 100.00
+
+### PM Block
+- Settle Jun 21 trades:
+    .venv/bin/python scripts/settle_daily.py --date 2026-06-21
+- Check Wunderground for Jun 21 Polymarket cities:
+    python scripts/wunderground_resettlement.py  (or manual check)
+- Review auto-trader log: did it enter and monitor correctly?
+- Review: did any exit signals fire?
+
+### Evening
+- Check auto-trader end-of-day summary (runs at 10 PM CT)
+- Review auto_trader_state_2026-06-22.json
+- Compare auto-trader entries vs manual run_daily_trade_poly.py
+- Note any discrepancies
+
+---
+
+## Tuesday Jun 23 -- Day 6: Auto-Trader Paper Test Day 2 + Go-Live Prep
+
+### Morning (auto-trader handles entries)
+- Auto-trader runs via cron, same as Monday
+- Check logs after 10:15 AM to verify initialization
+
+### Also run Kalshi paper trade manually:
+  .venv/bin/python scripts/run_daily_trade.py \
+    --date 2026-06-23 --mode paper --bankroll 100.00
+
+### PM Block: Go-Live Checklist
+
+  [ ] Auto-trader paper ran successfully Mon AND Tue (entries placed, monitoring worked)
+  [ ] At least 1 exit signal fired during paper testing (proves exit logic works)
+      If no exits fired: manually verify the logic is correct by checking
+      whether any position's best_bid ever exceeded entry + 0.15
+  [ ] Wunderground bias correction producing adjusted forecasts
+  [ ] Real CLOB order book data (not dummy 0.01/0.99 values)
+  [ ] No crashes in auto_trader.log across 2 days
+  [ ] State file resumes correctly (no re-initialization on second tick)
+  [ ] deploy_config_poly.json finalized
+  [ ] Bankroll confirmed: 100 pUSD on Polymarket
+  [ ] API credentials verified (RUN_LIVE_POST_ONLY_TEST=True passed)
+  [ ] Disk space > 30 GB free
+  [ ] Pushover notifications working (or acceptable to skip Week 1)
+
+### Evening
+- GO/NO-GO decision for Wed Jun 24
+- If GO: update cron to --mode live
+- If NO-GO: document blockers, keep paper mode
+- Commit and push
+
+---
+
+## Wednesday Jun 24 -- GO-LIVE
+
+### Pre-flight (09:30 AM CT)
+- Verify API auth: run credential notebook
+- Check pUSD balance (should be 100.00)
+- Review weather forecasts for trading cities
+- Switch cron to live mode:
+    crontab -e
+    * 10-22 * * * cd ~/Desktop/MCP_Project && .venv/bin/python scripts/auto_trader_poly.py --mode live 2>&1 >> logs/auto_trader.log
+
+### Go-Live (10:00 AM CT)
+- Auto-trader initializes at 10:05 AM
+- Places maker limit buys via SDK (post_only=True)
+- Monitors fills and exit conditions every minute
+- Pushover alerts on entries and exits
+
+### Manual oversight (10:15 AM)
+- Check logs:
+    tail -30 logs/auto_trader.log
+    cat logs/auto_trader_state_2026-06-24.json
+- Verify orders appear correct
+- Watch for any errors
+
+### Intraday
+- Auto-trader handles all monitoring and exits
+- Check logs every 1-2 hours
+- If something looks wrong: stop cron (crontab -e, comment out line)
+
+### Evening
+- Auto-trader end-of-day summary at 10 PM CT
+- Check settlement when Wunderground data available
+- Record first live trade results
+- 60-DAY CLOCK STARTS
+
+### Week 1 Rules (Jun 24-29)
+- Auto-trader handles entry and exit
+- Max 5 contracts per trade
+- Max $6 daily loss cap (enforced by auto-trader)
+- Manual oversight: check logs 2-3 times per day
+- Target: 10-15 trades by end of Week 1
+- Daily: review auto_trader_state file, settle, log
+
+---
+
+## Key Decisions Made Jun 21
+
+| Decision | Rationale |
+|----------|-----------|
+| CLOB order book fix | Was returning dummy 0.01/0.99; now real bid/ask |
+| Edge vs best_ask | More conservative than gamma_price, but honest |
+| Auto-trader built | Removes human from entry/exit loop |
+| Entry: maker | post_only=True, zero fees, 60-min timeout |
+| Exit: taker | Immediate fill, pay ~6c fee, 15c buffer absorbs it |
+| 1-min monitoring | Sufficient for weather markets (not HFT) |
+| Paper Mon/Tue | 2 days of automated testing before live |
+| US web UI blocked | API trading confirmed working, no geo-restriction |

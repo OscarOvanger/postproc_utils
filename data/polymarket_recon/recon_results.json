@@ -1,0 +1,2179 @@
+{
+  "run_timestamp": "2026-06-17T23:27:31.419363+00:00",
+  "weather_tag_id": "104596",
+  "n_events_found": 4721,
+  "n_unique_cities": 53,
+  "n_active_events": 88,
+  "n_closed_events": 4633,
+  "cities_summary": [
+    {
+      "city": "amsterdam",
+      "n_events": 77,
+      "total_volume": 4662989.3481789995,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "ankara",
+      "n_events": 120,
+      "total_volume": 9999557.099225001,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "atlanta",
+      "n_events": 120,
+      "total_volume": 10261171.731308002,
+      "median_bucket_width": 2,
+      "has_trained_model": false
+    },
+    {
+      "city": "austin",
+      "n_events": 84,
+      "total_volume": 5386142.234080999,
+      "median_bucket_width": 2,
+      "has_trained_model": true
+    },
+    {
+      "city": "beijing",
+      "n_events": 90,
+      "total_volume": 10958134.538873998,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "buenos_aires",
+      "n_events": 120,
+      "total_volume": 8456101.367684998,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "busan",
+      "n_events": 77,
+      "total_volume": 4021250.304387,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "cape_town",
+      "n_events": 69,
+      "total_volume": 2451219.3176650014,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "chengdu",
+      "n_events": 89,
+      "total_volume": 6615935.067407002,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "chicago_midway",
+      "n_events": 118,
+      "total_volume": 10582920.027890995,
+      "median_bucket_width": 2,
+      "has_trained_model": true
+    },
+    {
+      "city": "chongqing",
+      "n_events": 90,
+      "total_volume": 6064355.362773996,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "dallas",
+      "n_events": 121,
+      "total_volume": 8945816.682037005,
+      "median_bucket_width": 2,
+      "has_trained_model": false
+    },
+    {
+      "city": "denver",
+      "n_events": 84,
+      "total_volume": 5659476.304815001,
+      "median_bucket_width": 2,
+      "has_trained_model": false
+    },
+    {
+      "city": "guangzhou",
+      "n_events": 64,
+      "total_volume": 3940379.7894099997,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "helsinki",
+      "n_events": 77,
+      "total_volume": 4100488.53557,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "hong_kong",
+      "n_events": 95,
+      "total_volume": 24108113.135249,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "houston",
+      "n_events": 84,
+      "total_volume": 4346468.917122999,
+      "median_bucket_width": 2,
+      "has_trained_model": true
+    },
+    {
+      "city": "istanbul",
+      "n_events": 81,
+      "total_volume": 4662606.046276001,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "jakarta",
+      "n_events": 47,
+      "total_volume": 3157757.711456999,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "jeddah",
+      "n_events": 71,
+      "total_volume": 2415397.0269110003,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "jinan",
+      "n_events": 3,
+      "total_volume": 0,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "karachi",
+      "n_events": 64,
+      "total_volume": 1747724.7183749997,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "kuala_lumpur",
+      "n_events": 77,
+      "total_volume": 3659754.3522920003,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "lagos",
+      "n_events": 35,
+      "total_volume": 2583659.8177689994,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "london",
+      "n_events": 122,
+      "total_volume": 28526903.55296599,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "los_angeles",
+      "n_events": 84,
+      "total_volume": 6371488.140369002,
+      "median_bucket_width": 2,
+      "has_trained_model": true
+    },
+    {
+      "city": "lucknow",
+      "n_events": 105,
+      "total_volume": 5009935.617886001,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "madrid",
+      "n_events": 94,
+      "total_volume": 9673992.161983998,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "manila",
+      "n_events": 64,
+      "total_volume": 1997809.145982001,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "mexico_city",
+      "n_events": 78,
+      "total_volume": 3904056.6524870005,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "miami",
+      "n_events": 118,
+      "total_volume": 11017621.146209003,
+      "median_bucket_width": 2,
+      "has_trained_model": false
+    },
+    {
+      "city": "milan",
+      "n_events": 94,
+      "total_volume": 6177516.991788999,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "moscow",
+      "n_events": 80,
+      "total_volume": 5747598.774330998,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "munich",
+      "n_events": 105,
+      "total_volume": 7578906.946839,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "new_york_city",
+      "n_events": 122,
+      "total_volume": 20549272.28979699,
+      "median_bucket_width": 2,
+      "has_trained_model": true
+    },
+    {
+      "city": "panama_city",
+      "n_events": 74,
+      "total_volume": 1767494.8968809997,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "paris",
+      "n_events": 120,
+      "total_volume": 15092215.484998003,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "qingdao",
+      "n_events": 55,
+      "total_volume": 2200853.2978060003,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "san_francisco",
+      "n_events": 84,
+      "total_volume": 4855620.0714650005,
+      "median_bucket_width": 2,
+      "has_trained_model": true
+    },
+    {
+      "city": "sao_paulo",
+      "n_events": 118,
+      "total_volume": 6946093.300606001,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "seattle",
+      "n_events": 119,
+      "total_volume": 9182930.937044999,
+      "median_bucket_width": 2,
+      "has_trained_model": false
+    },
+    {
+      "city": "seoul",
+      "n_events": 122,
+      "total_volume": 31197836.114614006,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "shanghai",
+      "n_events": 97,
+      "total_volume": 19175578.544466004,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "shenzhen",
+      "n_events": 90,
+      "total_volume": 10241454.494574998,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "singapore",
+      "n_events": 97,
+      "total_volume": 8210788.422793001,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "taipei",
+      "n_events": 94,
+      "total_volume": 8218449.632303001,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "tel_aviv",
+      "n_events": 100,
+      "total_volume": 6362419.738945002,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "tokyo",
+      "n_events": 100,
+      "total_volume": 11069467.465617001,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "toronto",
+      "n_events": 121,
+      "total_volume": 10520226.544071006,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "warsaw",
+      "n_events": 94,
+      "total_volume": 5667576.824170002,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "wellington",
+      "n_events": 120,
+      "total_volume": 12024403.825647002,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "wuhan",
+      "n_events": 90,
+      "total_volume": 5644121.399290997,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    },
+    {
+      "city": "zhengzhou",
+      "n_events": 3,
+      "total_volume": 0,
+      "median_bucket_width": null,
+      "has_trained_model": false
+    }
+  ],
+  "horizon_analysis": [
+    {
+      "city": "amsterdam",
+      "n_dates": 76,
+      "earliest_date": "2026-04-03",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 5,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "ankara",
+      "n_dates": 119,
+      "earliest_date": "2026-02-18",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "atlanta",
+      "n_dates": 119,
+      "earliest_date": "2025-12-30",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "austin",
+      "n_dates": 83,
+      "earliest_date": "2026-03-24",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "beijing",
+      "n_dates": 89,
+      "earliest_date": "2026-03-20",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "buenos_aires",
+      "n_dates": 119,
+      "earliest_date": "2025-12-31",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "busan",
+      "n_dates": 76,
+      "earliest_date": "2026-04-03",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 5,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "cape_town",
+      "n_dates": 68,
+      "earliest_date": "2026-04-09",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "chengdu",
+      "n_dates": 88,
+      "earliest_date": "2026-03-20",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "chicago_midway",
+      "n_dates": 117,
+      "earliest_date": "2026-02-18",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "chongqing",
+      "n_dates": 89,
+      "earliest_date": "2026-03-20",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "dallas",
+      "n_dates": 120,
+      "earliest_date": "2025-12-30",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "denver",
+      "n_dates": 83,
+      "earliest_date": "2026-03-24",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "guangzhou",
+      "n_dates": 63,
+      "earliest_date": "2026-04-18",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "helsinki",
+      "n_dates": 76,
+      "earliest_date": "2026-04-03",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 5,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "hong_kong",
+      "n_dates": 94,
+      "earliest_date": "2026-03-13",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "houston",
+      "n_dates": 83,
+      "earliest_date": "2026-03-24",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "istanbul",
+      "n_dates": 80,
+      "earliest_date": "2026-03-30",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "jakarta",
+      "n_dates": 47,
+      "earliest_date": "2026-04-03",
+      "latest_date": "2026-05-21",
+      "min_horizon": 0,
+      "max_horizon": 5,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "jeddah",
+      "n_dates": 70,
+      "earliest_date": "2026-04-09",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "jinan",
+      "n_dates": 3,
+      "earliest_date": "2026-05-20",
+      "latest_date": "2026-05-22",
+      "min_horizon": 2,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "karachi",
+      "n_dates": 63,
+      "earliest_date": "2026-04-18",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "kuala_lumpur",
+      "n_dates": 76,
+      "earliest_date": "2026-04-03",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 5,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "lagos",
+      "n_dates": 35,
+      "earliest_date": "2026-04-09",
+      "latest_date": "2026-05-15",
+      "min_horizon": 0,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "london",
+      "n_dates": 121,
+      "earliest_date": "2025-12-31",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "los_angeles",
+      "n_dates": 83,
+      "earliest_date": "2026-03-24",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "lucknow",
+      "n_dates": 104,
+      "earliest_date": "2026-03-05",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "madrid",
+      "n_dates": 93,
+      "earliest_date": "2026-03-16",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "manila",
+      "n_dates": 63,
+      "earliest_date": "2026-04-18",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "mexico_city",
+      "n_dates": 77,
+      "earliest_date": "2026-03-30",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "miami",
+      "n_dates": 117,
+      "earliest_date": "2026-02-18",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "milan",
+      "n_dates": 93,
+      "earliest_date": "2026-03-16",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "moscow",
+      "n_dates": 79,
+      "earliest_date": "2026-03-30",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "munich",
+      "n_dates": 104,
+      "earliest_date": "2026-03-05",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "new_york_city",
+      "n_dates": 121,
+      "earliest_date": "2025-12-30",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "panama_city",
+      "n_dates": 73,
+      "earliest_date": "2026-04-03",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 5,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "paris",
+      "n_dates": 119,
+      "earliest_date": "2026-02-18",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "qingdao",
+      "n_dates": 54,
+      "earliest_date": "2026-04-27",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "san_francisco",
+      "n_dates": 83,
+      "earliest_date": "2026-03-24",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "sao_paulo",
+      "n_dates": 117,
+      "earliest_date": "2026-02-18",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "seattle",
+      "n_dates": 119,
+      "earliest_date": "2025-12-31",
+      "latest_date": "2026-06-17",
+      "min_horizon": 1,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "seoul",
+      "n_dates": 121,
+      "earliest_date": "2025-12-31",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "shanghai",
+      "n_dates": 96,
+      "earliest_date": "2026-03-13",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "shenzhen",
+      "n_dates": 89,
+      "earliest_date": "2026-03-20",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "singapore",
+      "n_dates": 96,
+      "earliest_date": "2026-03-13",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "taipei",
+      "n_dates": 93,
+      "earliest_date": "2026-03-16",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "tel_aviv",
+      "n_dates": 99,
+      "earliest_date": "2026-03-10",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "tokyo",
+      "n_dates": 99,
+      "earliest_date": "2026-03-10",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "toronto",
+      "n_dates": 120,
+      "earliest_date": "2025-12-31",
+      "latest_date": "2026-06-17",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "warsaw",
+      "n_dates": 93,
+      "earliest_date": "2026-03-16",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "wellington",
+      "n_dates": 119,
+      "earliest_date": "2026-02-18",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "wuhan",
+      "n_dates": 89,
+      "earliest_date": "2026-03-20",
+      "latest_date": "2026-06-19",
+      "min_horizon": 0,
+      "max_horizon": 6,
+      "median_horizon": 2.0
+    },
+    {
+      "city": "zhengzhou",
+      "n_dates": 3,
+      "earliest_date": "2026-05-20",
+      "latest_date": "2026-05-22",
+      "min_horizon": 2,
+      "max_horizon": 2,
+      "median_horizon": 2.0
+    }
+  ],
+  "price_history_test": [
+    {
+      "status": "active",
+      "city": "london",
+      "event_date": "2026-06-17",
+      "event_id": "596343",
+      "market_question": "Will the highest temperature in London be 24\u00b0C on June 17?",
+      "yes_token_id": "57510790507483129409050451689128817783476714457599692151913033874662411789729",
+      "working_fidelities": [
+        1,
+        5,
+        15,
+        60,
+        360,
+        720
+      ],
+      "earliest_timestamp": 1781496604,
+      "latest_timestamp": 1781738944,
+      "n_points_max": 405,
+      "lookback_days": 2.8048611111111112,
+      "order_book": {
+        "n_bids": 0,
+        "n_asks": 80,
+        "best_bid": null,
+        "best_ask": 0.001,
+        "spread": null,
+        "total_bid_size": 0,
+        "total_ask_size": 337217.56
+      }
+    },
+    {
+      "status": "active",
+      "city": "hong_kong",
+      "event_date": "2026-06-17",
+      "event_id": "596351",
+      "market_question": "Will the highest temperature in Hong Kong be 26\u00b0C on June 17?",
+      "yes_token_id": "12488767314166187201246588419222276672993190737460109108898711665353845032190",
+      "working_fidelities": [
+        1,
+        5,
+        15,
+        60,
+        360,
+        720
+      ],
+      "earliest_timestamp": 1781497807,
+      "latest_timestamp": 1781738945,
+      "n_points_max": 403,
+      "lookback_days": 2.790949074074074,
+      "order_book": {
+        "n_bids": 0,
+        "n_asks": 61,
+        "best_bid": null,
+        "best_ask": 0.001,
+        "spread": null,
+        "total_bid_size": 0,
+        "total_ask_size": 20837.190000000002
+      }
+    },
+    {
+      "status": "active",
+      "city": "sao_paulo",
+      "event_date": "2026-06-17",
+      "event_id": "599379",
+      "market_question": "Will the highest temperature in Sao Paulo be 19\u00b0C on June 17?",
+      "yes_token_id": "82481156633182205897223413516514556556514483268215150416088426970192752946932",
+      "working_fidelities": [
+        1,
+        5,
+        15,
+        60,
+        360,
+        720
+      ],
+      "earliest_timestamp": 1781573405,
+      "latest_timestamp": 1781738944,
+      "n_points_max": 277,
+      "lookback_days": 1.9159606481481481,
+      "order_book": {
+        "n_bids": 0,
+        "n_asks": 49,
+        "best_bid": null,
+        "best_ask": 0.001,
+        "spread": null,
+        "total_bid_size": 0,
+        "total_ask_size": 34148.1
+      }
+    },
+    {
+      "status": "closed",
+      "city": "paris",
+      "event_date": "2026-06-17",
+      "event_id": "596344",
+      "market_question": "Will the highest temperature in Paris be 37\u00b0C or higher on June 17?",
+      "yes_token_id": "97303548495523021806317103304304462781057367120268350873386123745480489355454",
+      "working_fidelities": [
+        1,
+        5,
+        15,
+        60,
+        360,
+        720
+      ],
+      "earliest_timestamp": 1781497806,
+      "latest_timestamp": 1781734806,
+      "n_points_max": 396,
+      "lookback_days": 2.7430555555555554
+    },
+    {
+      "status": "closed",
+      "city": "seoul",
+      "event_date": "2026-06-17",
+      "event_id": "596345",
+      "market_question": "Will the highest temperature in Seoul be 21\u00b0C or below on June 17?",
+      "yes_token_id": "47381163988848161989184781185834808565720855615021100293261297791043587897700",
+      "working_fidelities": [
+        1,
+        5,
+        15,
+        60,
+        360,
+        720
+      ],
+      "earliest_timestamp": 1781497806,
+      "latest_timestamp": 1781709606,
+      "n_points_max": 354,
+      "lookback_days": 2.451388888888889
+    },
+    {
+      "status": "closed",
+      "city": "ankara",
+      "event_date": "2026-06-17",
+      "event_id": "596346",
+      "market_question": "Will the highest temperature in Ankara be 25\u00b0C or below on June 17?",
+      "yes_token_id": "83899983202066285705369834653209760368077993435612566735681577931787024657625",
+      "working_fidelities": [
+        1,
+        5,
+        15,
+        60,
+        360,
+        720
+      ],
+      "earliest_timestamp": 1781496915,
+      "latest_timestamp": 1781732417,
+      "n_points_max": 393,
+      "lookback_days": 2.7257175925925927
+    }
+  ],
+  "data_availability": [
+    {
+      "city": "amsterdam",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "ankara",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "atlanta",
+      "station": "KATL",
+      "lat": 33.6407,
+      "lon": -84.4277,
+      "timezone": "America/New_York",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 2"
+    },
+    {
+      "city": "austin",
+      "station": "KAUS",
+      "lat": 30.1945,
+      "lon": -97.6699,
+      "timezone": "America/Chicago",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": true,
+      "model_city_name": "austin",
+      "data_quality_tier": "Tier 1"
+    },
+    {
+      "city": "beijing",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "buenos_aires",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "busan",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "cape_town",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "chengdu",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "chicago_midway",
+      "station": "KMDW",
+      "lat": 41.7861,
+      "lon": -87.7522,
+      "timezone": "America/Chicago",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": true,
+      "model_city_name": "chicago_midway",
+      "data_quality_tier": "Tier 1"
+    },
+    {
+      "city": "chongqing",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "dallas",
+      "station": "KDFW",
+      "lat": 32.8998,
+      "lon": -97.0403,
+      "timezone": "America/Chicago",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 2"
+    },
+    {
+      "city": "denver",
+      "station": "KDEN",
+      "lat": 39.8561,
+      "lon": -104.6737,
+      "timezone": "America/Denver",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 2"
+    },
+    {
+      "city": "guangzhou",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "helsinki",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "hong_kong",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "houston",
+      "station": "KIAH",
+      "lat": 29.9844,
+      "lon": -95.3414,
+      "timezone": "America/Chicago",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": true,
+      "model_city_name": "houston",
+      "data_quality_tier": "Tier 1"
+    },
+    {
+      "city": "istanbul",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "jakarta",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "jeddah",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "jinan",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "karachi",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "kuala_lumpur",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "lagos",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "london",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "los_angeles",
+      "station": "KLAX",
+      "lat": 33.9382,
+      "lon": -118.3886,
+      "timezone": "America/Los_Angeles",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": true,
+      "model_city_name": "los_angeles",
+      "data_quality_tier": "Tier 1"
+    },
+    {
+      "city": "lucknow",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "madrid",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "manila",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "mexico_city",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "miami",
+      "station": "KMIA",
+      "lat": 25.7959,
+      "lon": -80.287,
+      "timezone": "America/New_York",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 2"
+    },
+    {
+      "city": "milan",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "moscow",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "munich",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "new_york_city",
+      "station": "KLGA",
+      "lat": 40.7769,
+      "lon": -73.874,
+      "timezone": "America/New_York",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": true,
+      "model_city_name": "new_york_city",
+      "data_quality_tier": "Tier 1"
+    },
+    {
+      "city": "panama_city",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "paris",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "qingdao",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "san_francisco",
+      "station": "KSFO",
+      "lat": 37.6197,
+      "lon": -122.3647,
+      "timezone": "America/Los_Angeles",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": true,
+      "model_city_name": "san_francisco",
+      "data_quality_tier": "Tier 1"
+    },
+    {
+      "city": "sao_paulo",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "seattle",
+      "station": "KSEA",
+      "lat": 47.4502,
+      "lon": -122.3088,
+      "timezone": "America/Los_Angeles",
+      "cli_available": true,
+      "asos_available": true,
+      "mos_available": true,
+      "ecmwf_available": true,
+      "gfs_available": true,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 2"
+    },
+    {
+      "city": "seoul",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "shanghai",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "shenzhen",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "singapore",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "taipei",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "tel_aviv",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "tokyo",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "toronto",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "warsaw",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "wellington",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "wuhan",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    },
+    {
+      "city": "zhengzhou",
+      "station": null,
+      "lat": null,
+      "lon": null,
+      "timezone": null,
+      "cli_available": false,
+      "asos_available": false,
+      "mos_available": false,
+      "ecmwf_available": false,
+      "gfs_available": false,
+      "has_trained_model": false,
+      "model_city_name": null,
+      "data_quality_tier": "Tier 4"
+    }
+  ],
+  "resolution_sources": [
+    {
+      "city": "amsterdam",
+      "n_events": 77,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "ankara",
+      "n_events": 120,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "atlanta",
+      "n_events": 120,
+      "nws_cli_matches": 120,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "austin",
+      "n_events": 84,
+      "nws_cli_matches": 84,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "beijing",
+      "n_events": 90,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "buenos_aires",
+      "n_events": 120,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "busan",
+      "n_events": 77,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "cape_town",
+      "n_events": 69,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "chengdu",
+      "n_events": 89,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "chicago_midway",
+      "n_events": 118,
+      "nws_cli_matches": 118,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "chongqing",
+      "n_events": 90,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "dallas",
+      "n_events": 121,
+      "nws_cli_matches": 121,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "denver",
+      "n_events": 84,
+      "nws_cli_matches": 84,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "guangzhou",
+      "n_events": 64,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "helsinki",
+      "n_events": 77,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "hong_kong",
+      "n_events": 95,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "houston",
+      "n_events": 84,
+      "nws_cli_matches": 84,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "istanbul",
+      "n_events": 81,
+      "nws_cli_matches": 81,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "jakarta",
+      "n_events": 47,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "jeddah",
+      "n_events": 71,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "jinan",
+      "n_events": 3,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "karachi",
+      "n_events": 64,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "kuala_lumpur",
+      "n_events": 77,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "lagos",
+      "n_events": 35,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "london",
+      "n_events": 122,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "los_angeles",
+      "n_events": 84,
+      "nws_cli_matches": 84,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "lucknow",
+      "n_events": 105,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "madrid",
+      "n_events": 94,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "manila",
+      "n_events": 64,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "mexico_city",
+      "n_events": 78,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "miami",
+      "n_events": 118,
+      "nws_cli_matches": 118,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "milan",
+      "n_events": 94,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "moscow",
+      "n_events": 80,
+      "nws_cli_matches": 80,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "munich",
+      "n_events": 105,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "new_york_city",
+      "n_events": 122,
+      "nws_cli_matches": 122,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "panama_city",
+      "n_events": 74,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "paris",
+      "n_events": 120,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "qingdao",
+      "n_events": 55,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "san_francisco",
+      "n_events": 84,
+      "nws_cli_matches": 84,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "sao_paulo",
+      "n_events": 118,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "seattle",
+      "n_events": 119,
+      "nws_cli_matches": 119,
+      "match_rate": 1.0,
+      "flagged": false
+    },
+    {
+      "city": "seoul",
+      "n_events": 122,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "shanghai",
+      "n_events": 97,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "shenzhen",
+      "n_events": 90,
+      "nws_cli_matches": 1,
+      "match_rate": 0.011,
+      "flagged": true
+    },
+    {
+      "city": "singapore",
+      "n_events": 97,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "taipei",
+      "n_events": 94,
+      "nws_cli_matches": 12,
+      "match_rate": 0.128,
+      "flagged": true
+    },
+    {
+      "city": "tel_aviv",
+      "n_events": 100,
+      "nws_cli_matches": 87,
+      "match_rate": 0.87,
+      "flagged": false
+    },
+    {
+      "city": "tokyo",
+      "n_events": 100,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "toronto",
+      "n_events": 121,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "warsaw",
+      "n_events": 94,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "wellington",
+      "n_events": 120,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "wuhan",
+      "n_events": 90,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    },
+    {
+      "city": "zhengzhou",
+      "n_events": 3,
+      "nws_cli_matches": 0,
+      "match_rate": 0.0,
+      "flagged": true
+    }
+  ]
+}

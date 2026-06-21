@@ -1,0 +1,42 @@
+{
+  "event_date": "2026-06-02",
+  "n_trades": 4,
+  "trades": [
+    {
+      "city": "chicago_midway",
+      "bucket": "76-77",
+      "price": 0.255,
+      "edge": 0.27731811609724544,
+      "contracts": 5,
+      "dry_run": true
+    },
+    {
+      "city": "oklahoma_city",
+      "bucket": "<89",
+      "price": 0.635,
+      "edge": 0.3649655859588141,
+      "contracts": 5,
+      "dry_run": true
+    },
+    {
+      "city": "phoenix",
+      "bucket": "105-106",
+      "price": 0.57,
+      "edge": 0.10385596005960696,
+      "contracts": 5,
+      "dry_run": true
+    },
+    {
+      "city": "san_francisco",
+      "bucket": "66-67",
+      "price": 0.33,
+      "edge": 0.042631853684855225,
+      "contracts": 5,
+      "dry_run": true
+    }
+  ],
+  "bankroll_before": 10000,
+  "contracts_used": 5,
+  "edge_threshold": 0.03707426079737483,
+  "dry_run": true
+}

@@ -1,0 +1,50 @@
+{
+  "start_date": "2026-05-19",
+  "end_date": "2026-06-14",
+  "n_calendar_days": 27,
+  "window_pct_of_60d": 45.0,
+  "sharpe_annual": 6.2,
+  "sharpe_ci_lo": 4.5,
+  "sharpe_ci_hi": 7.89,
+  "sortino_annual": 34.97,
+  "total_pnl_cents": 2513.0,
+  "total_pnl_dollars": 25.13,
+  "final_bankroll_cents": 12513.0,
+  "max_drawdown_cents": -250.0,
+  "max_drawdown_pct": -0.0211,
+  "worst_losing_streak": 6,
+  "eliminated": false,
+  "elimination_date": null,
+  "min_bankroll_cents": 10000.0,
+  "n_trades": 57,
+  "n_trading_days": 20,
+  "trades_per_day": 2.11,
+  "projected_60d_trades": 126.7,
+  "meets_80_trade_min": true,
+  "win_rate": 0.4386,
+  "mean_edge": 0.2881,
+  "mean_pnl_per_trade_cents": 44.09,
+  "profit_factor": 1.5,
+  "psr_0": 0.9999,
+  "min_trl_0": 6.3,
+  "gonogo": {
+    "not_eliminated": true,
+    "projected_trades_80": true,
+    "sharpe_positive": true,
+    "max_dd_under_30pct": true,
+    "win_rate_above_50pct": false,
+    "psr_above_95pct": true
+  },
+  "gonogo_pass_count": 5,
+  "positive_trading_days": 10,
+  "best_day": {
+    "date": "2026-05-29",
+    "pnl_cents": 986.0,
+    "city": "chicago_midway"
+  },
+  "worst_day": {
+    "date": "2026-05-27",
+    "pnl_cents": -148.0,
+    "city": "san_francisco"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "method": "get_trades_paginated",
+  "params": "TradeParams(id=None, maker_address=None, market=None, asset_id='7316563335498730385838767291824523411883612485039640288254670120582119586317', before=None, after=None)",
+  "payload": {
+    "trades": [],
+    "next_cursor": "LTE=",
+    "limit": 300,
+    "count": 0
+  }
+}

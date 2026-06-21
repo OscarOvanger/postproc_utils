@@ -1,0 +1,134 @@
+{
+  "n_pairs": 18,
+  "correlation": 0.2559408228906728,
+  "mean_abs_error": 0.16956325910771153,
+  "signed_bias": -0.002527777777777775,
+  "pairs_sample": [
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "74-75\u00b0F",
+      "model_prob": 5.060871797908843e-05,
+      "market_price": 0.0005
+    },
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "76-77\u00b0F",
+      "model_prob": 0.0016949644732396402,
+      "market_price": 0.0005
+    },
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "78-79\u00b0F",
+      "model_prob": 0.02363490635009919,
+      "market_price": 0.0005
+    },
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "80-81\u00b0F",
+      "model_prob": 0.13733066031149277,
+      "market_price": 0.0005
+    },
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "82-83\u00b0F",
+      "model_prob": 0.332707237681306,
+      "market_price": 0.0005
+    },
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "84-85\u00b0F",
+      "model_prob": 0.3361827430766575,
+      "market_price": 0.999
+    },
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "86-87\u00b0F",
+      "model_prob": 0.14168003324619705,
+      "market_price": 0.0015
+    },
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "88-89\u00b0F",
+      "model_prob": 0.024895896382264606,
+      "market_price": 0.0005
+    },
+    {
+      "city": "austin",
+      "event_date": "2026-03-29",
+      "bucket_label": "90-91\u00b0F",
+      "model_prob": 0.001822949760764137,
+      "market_price": 0.0365
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "76-77\u00b0F",
+      "model_prob": 1.448485761940476e-18,
+      "market_price": 0.0005
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "78-79\u00b0F",
+      "model_prob": 4.0327863981923266e-12,
+      "market_price": 0.0005
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "80-81\u00b0F",
+      "model_prob": 3.789360957463593e-07,
+      "market_price": 0.0005
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "82-83\u00b0F",
+      "model_prob": 0.001244564302726266,
+      "market_price": 0.0005
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "84-85\u00b0F",
+      "model_prob": 0.15062462917058292,
+      "market_price": 0.9995
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "86-87\u00b0F",
+      "model_prob": 0.7120610673245553,
+      "market_price": 0.002
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "88-89\u00b0F",
+      "model_prob": 0.13507000189752283,
+      "market_price": 0.0005
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "90-91\u00b0F",
+      "model_prob": 0.0009990865975746952,
+      "market_price": 0.001
+    },
+    {
+      "city": "houston",
+      "event_date": "2026-03-27",
+      "bucket_label": "92-93\u00b0F",
+      "model_prob": 2.7176690939998867e-07,
+      "market_price": 0.0005
+    }
+  ]
+}

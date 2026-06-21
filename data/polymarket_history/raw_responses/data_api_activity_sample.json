@@ -1,0 +1,13 @@
+{
+  "status_code": null,
+  "params": {
+    "market": "0x27943962a563d9c438cb9d4de62153d6845552c40926f9eca6da83b34562e2e5",
+    "type": "TRADE",
+    "sortBy": "TIMESTAMP",
+    "sortDirection": "ASC",
+    "limit": 500,
+    "offset": 0
+  },
+  "payload": null,
+  "body": "{\"error\":\"required query param 'user' not provided\"}"
+}

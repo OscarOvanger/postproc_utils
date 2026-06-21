@@ -1,0 +1,5 @@
+{
+  "auth_ok": false,
+  "message": "Auth verification failed for SDK and raw HTTP",
+  "sdk_error": "py_clob_client_v2 not installed. Install with:\n  pip install 'git+https://github.com/Polymarket/py-clob-client-v2.git@1.0.1rc1'"
+}

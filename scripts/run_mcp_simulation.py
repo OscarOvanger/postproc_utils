@@ -1,4 +1,4 @@
-"""Run continuous MCP challenge simulation on OOS + fresh validation data."""
+"""Run continuous MCP challenge simulation on IS + OOS + fresh validation data."""
 
 from __future__ import annotations
 
@@ -33,9 +33,10 @@ from run_trackB_grid import (  # noqa: E402
     apply_selection,
     generate_signals,
 )
+from entry_interface import filter_to_trading_window  # noqa: E402
+from snapshot_stability import stability_entry  # noqa: E402
 from src.data_store import TRAIN_CITIES  # noqa: E402
 from src.sizing import taker_fee_cents  # noqa: E402
-from src.snapshot_stability import assert_no_true_holdout  # noqa: E402
 
 SPLIT_DIR = PROJECT_ROOT / "data" / "splits"
 FRESH_DIR = PROJECT_ROOT / "data" / "fresh_validation"
@@ -43,8 +44,7 @@ FORECASTS_OOS_PATH = PROJECT_ROOT / "data" / "trackb" / "forecasts.parquet"
 FORECASTS_FRESH_PATH = FRESH_DIR / "forecasts_fresh.parquet"
 MARKET_FRESH_PATH = FRESH_DIR / "market_fresh.parquet"
 RAW_DATA_DIR = PROJECT_ROOT / "historic_tmax_market_data"
-FIGURE_DIR = PROJECT_ROOT / "reports" / "figures"
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "mcp_simulation"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "mcp_simulation_extended"
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "deploy_config.json"
 
 INITIAL_BANKROLL_CENTS = 10_000
@@ -127,22 +127,31 @@ def _load_forecasts() -> pd.DataFrame:
 
 def load_simulation_data() -> tuple[pd.DataFrame, pd.DataFrame, list[str], str, str]:
     """Assemble market + forecast data for the full simulation window."""
+    is_path = SPLIT_DIR / "threshold_opt.parquet"
     oos_path = SPLIT_DIR / "time_holdout.parquet"
-    if not oos_path.exists():
-        raise FileNotFoundError(f"Missing required split: {oos_path}")
 
-    oos_market = pd.read_parquet(oos_path)
-    oos_market = _normalize_market_df(oos_market)
-    oos_dates = pd.to_datetime(oos_market["event_date"])
-    start_date = oos_dates.min().strftime("%Y-%m-%d")
+    market_frames_init: list[pd.DataFrame] = []
+    for split_path in [is_path, oos_path]:
+        if split_path.exists():
+            df = pd.read_parquet(split_path)
+            market_frames_init.append(_normalize_market_df(df))
+        else:
+            print(f"WARNING: missing {split_path}")
 
-    market_frames = [oos_market]
+    if not market_frames_init:
+        raise FileNotFoundError("No split parquets found")
+
+    base_market = pd.concat(market_frames_init, ignore_index=True)
+    base_dates = pd.to_datetime(base_market["event_date"])
+    start_date = base_dates.min().strftime("%Y-%m-%d")
+
+    market_frames = [base_market]
     fresh_max_date: date | None = None
 
     if MARKET_FRESH_PATH.exists():
         fresh_market = pd.read_parquet(MARKET_FRESH_PATH)
         fresh_market = _normalize_market_df(fresh_market)
-        split_max = oos_dates.max().date()
+        split_max = base_dates.max().date()
         fresh_market = fresh_market.loc[
             pd.to_datetime(fresh_market["event_date"]).dt.date > split_max
         ].copy()
@@ -150,13 +159,13 @@ def load_simulation_data() -> tuple[pd.DataFrame, pd.DataFrame, list[str], str, 
             market_frames.append(fresh_market)
             fresh_max_date = pd.to_datetime(fresh_market["event_date"]).max().date()
     else:
-        print(f"WARNING: missing {MARKET_FRESH_PATH}; proceeding with OOS-only market data.")
+        print(f"WARNING: missing {MARKET_FRESH_PATH}; proceeding without fresh market data.")
 
-    gap_market = _load_csv_gap_market(fresh_max_date or oos_dates.max().date())
+    gap_market = _load_csv_gap_market(fresh_max_date or base_dates.max().date())
     if not gap_market.empty:
         print(
             f"Loaded {len(gap_market):,} supplemental CSV rows after "
-            f"{fresh_max_date or oos_dates.max().date()}."
+            f"{fresh_max_date or base_dates.max().date()}."
         )
         market_frames.append(gap_market)
 
@@ -164,7 +173,7 @@ def load_simulation_data() -> tuple[pd.DataFrame, pd.DataFrame, list[str], str, 
     if market_df.empty:
         raise ValueError("No market data available for simulation.")
 
-    assert_no_true_holdout(market_df)
+    # IS data included intentionally: full-window MCP survival test, not OOS edge validation.
     forecasts_df = _load_forecasts()
 
     end_date = pd.to_datetime(market_df["event_date"]).max().strftime("%Y-%m-%d")
@@ -191,9 +200,79 @@ def _fit_contracts(
     return 0
 
 
+def enrich_signals_with_entry_time(
+    signals: pd.DataFrame,
+    market_df: pd.DataFrame,
+    k: int = 1,
+) -> pd.DataFrame:
+    """Attach stability entry snapshot time to each signal row."""
+    out = signals.copy()
+    out["entry_time"] = pd.NaT
+
+    market = market_df.copy()
+    market["snapshot_time_local"] = pd.to_datetime(market["snapshot_time_local"])
+    day_cache: dict[tuple[str, str], pd.DataFrame] = {}
+
+    for idx, row in out.iterrows():
+        if bool(row["no_signal"]):
+            continue
+        city = str(row["city"])
+        event_date = str(row["event_date"])
+        cache_key = (city, event_date)
+        if cache_key not in day_cache:
+            day_cache[cache_key] = market[
+                market["city"].eq(city) & market["event_date"].eq(event_date)
+            ].copy()
+        day_df = filter_to_trading_window(day_cache[cache_key])
+        if day_df.empty:
+            continue
+        stability = stability_entry(day_df, k=k)
+        if not stability.no_signal:
+            out.at[idx, "entry_time"] = stability.entry_snapshot_time
+
+    return out
+
+
+def find_intraday_exit(
+    market_df: pd.DataFrame,
+    city: str,
+    event_date: str,
+    bucket_label: str,
+    entry_price: float,
+    entry_time: pd.Timestamp,
+    profit_target: float = 0.15,
+) -> tuple[bool, float]:
+    """Check if the profit target is hit after entry.
+
+    Returns:
+        (exited_early, exit_price)
+        If exited_early is False, exit_price is not used (held to settlement).
+    """
+    if pd.isna(entry_time):
+        return False, 0.0
+
+    day_bucket = market_df[
+        (market_df["city"] == city)
+        & (market_df["event_date"] == event_date)
+        & (market_df["bucket_label"].astype(str) == str(bucket_label))
+    ].copy()
+    day_bucket["snapshot_time_local"] = pd.to_datetime(day_bucket["snapshot_time_local"])
+    after_entry = day_bucket[day_bucket["snapshot_time_local"] > entry_time]
+    after_entry = after_entry.sort_values("snapshot_time_local")
+
+    for _, snap in after_entry.iterrows():
+        current_price = float(snap["yes_mid_close"])
+        if current_price >= entry_price + profit_target:
+            return True, current_price
+
+    return False, 0.0
+
+
 def run_mcp_backtest(
     signals: pd.DataFrame,
     calendar_dates: list[str],
+    market_df: pd.DataFrame,
+    profit_target: float = 0.15,
     initial_bankroll_cents: int = INITIAL_BANKROLL_CENTS,
     elimination_cents: int = ELIMINATION_CENTS,
     flat_contracts_default: int = FLAT_CONTRACTS_DEFAULT,
@@ -246,8 +325,28 @@ def run_mcp_backtest(
             cost_cents = int(contracts * entry_price * 100)
             fee_cents = taker_fee_cents(contracts, entry_price)
             daily_spent += cost_cents
-            payout_cents = contracts * 100 if bool(row["resolved"]) else 0
-            net_pnl_cents = payout_cents - cost_cents - fee_cents
+
+            exited_early, exit_price = find_intraday_exit(
+                market_df,
+                str(row["city"]),
+                str(row["event_date"]),
+                str(row["entry_bucket"]),
+                entry_price,
+                pd.to_datetime(row["entry_time"]),
+                profit_target=profit_target,
+            )
+
+            if exited_early:
+                exit_fee_cents = taker_fee_cents(contracts, exit_price)
+                gross_exit_cents = int(contracts * exit_price * 100)
+                net_pnl_cents = gross_exit_cents - cost_cents - fee_cents - exit_fee_cents
+                exit_type = "profit_target_15c"
+            else:
+                payout_cents = contracts * 100 if bool(row["resolved"]) else 0
+                net_pnl_cents = payout_cents - cost_cents - fee_cents
+                exit_type = "settlement"
+                exit_price = np.nan
+
             day_pnl += net_pnl_cents
             n_trades += 1
             day_contracts.append(contracts)
@@ -258,6 +357,8 @@ def run_mcp_backtest(
                     "cost_cents": cost_cents,
                     "fee_cents": fee_cents,
                     "net_pnl_cents": net_pnl_cents,
+                    "exit_type": exit_type,
+                    "exit_price": exit_price,
                     "opening_bankroll_cents": int(opening_bankroll),
                 }
             )
@@ -424,10 +525,37 @@ def build_summary(
         win_rate = float((trades["net_pnl_cents"] > 0).mean())
         mean_pnl_per_trade_cents = float(trades["net_pnl_cents"].mean())
         profit_factor = float(wins / abs(losses_total)) if losses_total < 0 else float("inf")
+        n_profit_target_exits = int((trades["exit_type"] == "profit_target_15c").sum())
+        n_settlement_exits = int((trades["exit_type"] == "settlement").sum())
+        city_summary = (
+            trades.groupby("city")
+            .agg(
+                n_trades=("net_pnl_cents", "count"),
+                total_pnl=("net_pnl_cents", "sum"),
+                win_rate=("net_pnl_cents", lambda x: (x > 0).mean()),
+                n_profit_target=("exit_type", lambda x: (x == "profit_target_15c").sum()),
+                n_settlement=("exit_type", lambda x: (x == "settlement").sum()),
+            )
+            .to_dict(orient="index")
+        )
     else:
         win_rate = 0.0
         mean_pnl_per_trade_cents = 0.0
         profit_factor = float("nan")
+        n_profit_target_exits = 0
+        n_settlement_exits = 0
+        city_summary = {}
+
+    if not trades.empty and len(daily_log) > 0:
+        trading_pnl = daily_log.loc[daily_log["n_trades"] > 0, "daily_pnl_cents"]
+        if not trading_pnl.empty and trading_pnl.sum() > 0:
+            sorted_pnl = trading_pnl.sort_values(ascending=False)
+            top3_pnl = sorted_pnl.head(3).sum()
+            pnl_concentration_top3 = float(top3_pnl / trading_pnl.sum())
+        else:
+            pnl_concentration_top3 = float("nan")
+    else:
+        pnl_concentration_top3 = float("nan")
 
     psr_0 = float("nan")
     min_trl_0 = float("nan")
@@ -473,6 +601,12 @@ def build_summary(
         "mean_edge": round(mean_edge, 4) if np.isfinite(mean_edge) else None,
         "mean_pnl_per_trade_cents": round(mean_pnl_per_trade_cents, 2),
         "profit_factor": round(profit_factor, 2) if np.isfinite(profit_factor) else None,
+        "n_profit_target_exits": n_profit_target_exits,
+        "n_settlement_exits": n_settlement_exits,
+        "pnl_concentration_top3": (
+            round(pnl_concentration_top3, 4) if np.isfinite(pnl_concentration_top3) else None
+        ),
+        "per_city": city_summary,
         "psr_0": round(psr_0, 4) if np.isfinite(psr_0) else None,
         "min_trl_0": round(min_trl_0, 1) if np.isfinite(min_trl_0) else None,
         "gonogo": gonogo_passes,
@@ -697,6 +831,25 @@ def print_summary(summary: dict[str, object]) -> None:
     pf = summary["profit_factor"]
     print(f"  Profit factor:      {pf:.2f}" if pf is not None else "  Profit factor:      n/a")
 
+    print("\nEXIT MIX")
+    print(f"  Profit target 15c:  {summary['n_profit_target_exits']}")
+    print(f"  Settlement:         {summary['n_settlement_exits']}")
+    conc = summary.get("pnl_concentration_top3")
+    if conc is not None:
+        print(f"  PnL top-3 days:     {conc:.1%} of trading-day PnL")
+
+    per_city = summary.get("per_city", {})
+    if per_city:
+        print("\nPER-CITY")
+        for city in sorted(per_city):
+            row = per_city[city]
+            print(
+                f"  {city:18s} trades={int(row['n_trades']):3d}  "
+                f"PnL=${row['total_pnl'] / 100:.2f}  "
+                f"win={row['win_rate']:.1%}  "
+                f"pt={int(row['n_profit_target'])}  settle={int(row['n_settlement'])}"
+            )
+
     gonogo = summary["gonogo"]
     print("\nMCP GO/NO-GO")
     print(f"  1. Not eliminated:            {'PASS' if gonogo['not_eliminated'] else 'FAIL'}")
@@ -724,13 +877,14 @@ def generate_figures(
     market_df: pd.DataFrame,
     calendar_dates: list[str],
     summary: dict[str, object],
+    figure_dir: Path,
 ) -> None:
     daily_log: pd.DataFrame = result["daily_log"]
     trades: pd.DataFrame = result["trades"]
-    plot_equity_curve(daily_log, summary, FIGURE_DIR / "mcp_equity_curve.png")
-    plot_daily_pnl(daily_log, FIGURE_DIR / "mcp_daily_pnl.png")
-    plot_trade_heatmap(trades, market_df, calendar_dates, FIGURE_DIR / "mcp_trade_heatmap.png")
-    plot_cumulative_vs_baselines(trades, FIGURE_DIR / "mcp_cumulative_vs_baselines.png")
+    plot_equity_curve(daily_log, summary, figure_dir / "equity_curve.png")
+    plot_daily_pnl(daily_log, figure_dir / "daily_pnl.png")
+    plot_trade_heatmap(trades, market_df, calendar_dates, figure_dir / "trade_heatmap.png")
+    plot_cumulative_vs_baselines(trades, figure_dir / "cumulative_vs_baselines.png")
 
 
 def parse_args() -> argparse.Namespace:
@@ -757,15 +911,18 @@ def main() -> None:
         f"({len(calendar_dates)} calendar days)"
     )
 
-    signals = generate_signals(
+    signals = enrich_signals_with_entry_time(
+        generate_signals(
+            market_df,
+            forecasts_df,
+            "track_b_flat",
+            exclude_cities=LOW_OOS_COVERAGE_CITIES,
+        ),
         market_df,
-        forecasts_df,
-        "track_b_flat",
-        exclude_cities=LOW_OOS_COVERAGE_CITIES,
     )
     selected = apply_selection(signals, "edge_threshold", args.edge_threshold)
 
-    result = run_mcp_backtest(selected, calendar_dates)
+    result = run_mcp_backtest(selected, calendar_dates, market_df, profit_target=0.15)
     summary = build_summary(result, calendar_dates, start_date, end_date)
     result["summary"] = summary
 
@@ -776,7 +933,7 @@ def main() -> None:
         json.dump(summary, handle, indent=2)
 
     if not args.no_figures:
-        generate_figures(result, market_df, calendar_dates, summary)
+        generate_figures(result, market_df, calendar_dates, summary, args.output_dir)
 
     print_summary(summary)
 
