@@ -920,7 +920,13 @@ class PolymarketClient:
         OrderArgs = clob["OrderArgs"]
         OrderType = clob["OrderType"]
         PartialCreateOrderOptions = clob["PartialCreateOrderOptions"]
-        order_side = Side.BUY if side.upper() == "BUY" else Side.SELL
+        side_upper = side.upper()
+        if side_upper in ("BUY", "YES"):
+            order_side = Side.BUY
+        elif side_upper in ("SELL", "NO"):
+            order_side = Side.SELL
+        else:
+            raise ValueError(f"Unknown order side: {side!r}")
         order_args = OrderArgs(
             token_id=token_id,
             price=price,
