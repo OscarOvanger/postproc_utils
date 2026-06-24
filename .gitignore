@@ -91,3 +91,4 @@ docs/
 DATA_README.md
 config/polymarket_credentials.json
 logs/poly_*
+data/polymarket_recon/
