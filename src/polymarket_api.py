@@ -1023,11 +1023,86 @@ class PolymarketClient:
         order_id = order.get("id") or order.get("orderID")
         return str(order_id) if order_id else None
 
+    def get_conditional_balance(self, token_id: str) -> float:
+        """Return held outcome token count for a token_id."""
+        clob = _clob_types()
+        result = self.client.get_balance_allowance(
+            clob["BalanceAllowanceParams"](
+                asset_type=clob["AssetType"].CONDITIONAL,
+                token_id=token_id,
+            )
+        )
+        raw = result.get("balance", 0) if isinstance(result, dict) else 0
+        return float(raw) / 1_000_000
+
+    def _fills_from_trades(self, order_id: str) -> dict[str, Any] | None:
+        """Sum maker fills for order_id from recent CLOB trades."""
+        try:
+            from py_clob_client_v2.clob_types import TradeParams
+        except ImportError:
+            return None
+
+        try:
+            trades = self.client.get_trades(TradeParams(), only_first_page=True)
+        except Exception:
+            return None
+
+        total_matched = 0.0
+        price_amounts: list[tuple[float, float]] = []
+        target_id = str(order_id)
+        for trade in trades or []:
+            if not isinstance(trade, dict):
+                continue
+            for maker_order in trade.get("maker_orders") or []:
+                if not isinstance(maker_order, dict):
+                    continue
+                if str(maker_order.get("order_id")) != target_id:
+                    continue
+                amount = _to_float(maker_order.get("matched_amount")) or 0.0
+                price = _to_float(maker_order.get("price")) or 0.0
+                if amount <= 0:
+                    continue
+                total_matched += amount
+                price_amounts.append((price, amount))
+
+        if total_matched <= 0:
+            return None
+
+        fill_price = None
+        if price_amounts:
+            fill_price = sum(price * amount for price, amount in price_amounts) / total_matched
+
+        return {
+            "status": "filled",
+            "order_id": target_id,
+            "fill_price": fill_price,
+            "size_matched": total_matched,
+        }
+
+    def _status_from_open_order(self, order: dict[str, Any], target_id: str) -> dict[str, Any]:
+        fields = self._order_fill_fields(order)
+        original = fields["original_size"] or 0.0
+        matched = fields["size_matched"] or 0.0
+        payload: dict[str, Any] = {
+            "order_id": target_id,
+            "fill_price": fields["fill_price"],
+            "size_matched": matched,
+            "original_size": original,
+        }
+        if original > 0 and matched >= original:
+            payload["status"] = "filled"
+        elif matched > 0:
+            payload["status"] = "partial"
+        else:
+            payload["status"] = "open"
+        return payload
+
     def _order_fill_fields(self, order: dict[str, Any]) -> dict[str, Any]:
         original = _to_float(
             order.get("original_size") or order.get("size") or order.get("size_matched")
         )
-        matched = _to_float(order.get("size_matched") or order.get("size"))
+        matched_raw = order.get("size_matched")
+        matched = _to_float(matched_raw) if matched_raw is not None else 0.0
         fill_price = _to_float(order.get("price") or order.get("avg_price"))
         return {
             "original_size": original,
@@ -1043,6 +1118,14 @@ class PolymarketClient:
     ) -> dict[str, Any]:
         """Return fill status for a resting or completed order."""
         target_id = str(order_id)
+
+        try:
+            raw_order = self.client.get_order(target_id)
+        except Exception:
+            raw_order = None
+        if isinstance(raw_order, dict):
+            return self._status_from_open_order(raw_order, target_id)
+
         open_orders = self.client.get_open_orders()
         for order in open_orders:
             if not isinstance(order, dict):
@@ -1050,54 +1133,21 @@ class PolymarketClient:
             current_id = self._normalize_order_id(order)
             if current_id != target_id:
                 continue
-            fields = self._order_fill_fields(order)
-            original = fields["original_size"] or 0.0
-            matched = fields["size_matched"] or 0.0
-            if original > 0 and matched >= original:
+            return self._status_from_open_order(order, target_id)
+
+        trade_fill = self._fills_from_trades(target_id)
+        if trade_fill is not None:
+            return trade_fill
+
+        if token_id:
+            held = self.get_conditional_balance(token_id)
+            if held > 0:
                 return {
                     "status": "filled",
                     "order_id": target_id,
-                    "fill_price": fields["fill_price"],
-                    "size_matched": matched,
+                    "fill_price": None,
+                    "size_matched": held,
                 }
-            return {
-                "status": "open",
-                "order_id": target_id,
-                "fill_price": fields["fill_price"],
-                "size_matched": matched,
-            }
-
-        if hasattr(self.client, "get_trades_paginated") and token_id:
-            try:
-                from py_clob_client_v2.clob_types import TradeParams
-            except ImportError:
-                TradeParams = None  # type: ignore[misc, assignment]
-            if TradeParams is not None:
-                params = TradeParams(asset_id=token_id)
-                cursor = None
-                for _ in range(5):
-                    payload = self.client.get_trades_paginated(
-                        params=params,
-                        next_cursor=cursor,
-                    )
-                    trades = payload.get("trades") if isinstance(payload, dict) else []
-                    for trade in trades or []:
-                        if not isinstance(trade, dict):
-                            continue
-                        trade_order_id = trade.get("order_id") or trade.get("orderID")
-                        if str(trade_order_id) != target_id:
-                            continue
-                        fill_price = _to_float(trade.get("price") or trade.get("avg_price"))
-                        matched = _to_float(trade.get("size") or trade.get("size_matched"))
-                        return {
-                            "status": "filled",
-                            "order_id": target_id,
-                            "fill_price": fill_price,
-                            "size_matched": matched,
-                        }
-                    cursor = payload.get("next_cursor") if isinstance(payload, dict) else None
-                    if not trades or cursor in (None, "LTE="):
-                        break
 
         return {"status": "unknown", "order_id": target_id}
 

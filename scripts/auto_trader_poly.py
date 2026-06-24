@@ -285,6 +285,50 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
+def _apply_entry_fill(
+    state: dict[str, Any],
+    pos: dict[str, Any],
+    *,
+    fill_price: float | None,
+    size_matched: float | None,
+    now: datetime,
+    event: str = "entry_filled",
+) -> None:
+    """Transition a pending entry to filled, including partial fills."""
+    matched = size_matched or pos.get("n_contracts")
+    if matched and matched > 0:
+        pos["n_contracts"] = int(matched) if matched == int(matched) else matched
+    entry_price = float(fill_price or pos.get("maker_entry_price") or 0.0)
+    pos["status"] = "filled"
+    pos["fill_price"] = entry_price
+    pos["fill_time"] = now.strftime("%H:%M:%S")
+    pos["exit_reason"] = None
+    pos["capital_at_risk"] = round(pos["n_contracts"] * entry_price, 4)
+    print(
+        f"  FILLED: {pos['city']} {pos['bucket_label']} "
+        f"@ ${entry_price:.3f} x {pos['n_contracts']}"
+    )
+    append_trade_log(
+        state,
+        {
+            "event": event,
+            "city": pos["city"],
+            "fill_price": pos["fill_price"],
+            "n_contracts": pos["n_contracts"],
+            "order_id": pos.get("order_id"),
+        },
+    )
+    send_pushover(
+        f"Entry filled: {pos['city']}",
+        f"{pos['bucket_label']} @ ${entry_price:.3f} x {pos['n_contracts']}",
+    )
+
+
+def _entry_has_fill(status: dict[str, Any]) -> bool:
+    matched = status.get("size_matched") or 0.0
+    return status.get("status") in ("filled", "partial") or matched > 0
+
+
 def check_pending_entries(state: dict[str, Any]) -> dict[str, Any]:
     """Check fill status of pending entry orders. Live mode only."""
     if state["mode"] == "paper":
@@ -301,27 +345,20 @@ def check_pending_entries(state: dict[str, Any]) -> dict[str, Any]:
             str(pos["order_id"]),
             token_id=str(pos["yes_token_id"]),
         )
-        if status.get("status") == "filled":
-            pos["status"] = "filled"
-            pos["fill_price"] = status.get("fill_price") or pos["maker_entry_price"]
-            pos["fill_time"] = now.strftime("%H:%M:%S")
-            print(
-                f"  FILLED: {pos['city']} {pos['bucket_label']} "
-                f"@ ${pos['fill_price']:.2f}"
-            )
-            append_trade_log(
+        if _entry_has_fill(status):
+            should_cancel_remainder = status.get("status") in ("open", "partial")
+            _apply_entry_fill(
                 state,
-                {
-                    "event": "entry_filled",
-                    "city": pos["city"],
-                    "fill_price": pos["fill_price"],
-                    "order_id": pos["order_id"],
-                },
+                pos,
+                fill_price=status.get("fill_price"),
+                size_matched=status.get("size_matched"),
+                now=now,
             )
-            send_pushover(
-                f"Entry filled: {pos['city']}",
-                f"{pos['bucket_label']} @ ${pos['fill_price']:.2f}",
-            )
+            if should_cancel_remainder and pos.get("order_id"):
+                try:
+                    client.cancel_order(str(pos["order_id"]))
+                except Exception as exc:
+                    print(f"  Cancel remainder failed: {exc}")
 
     entry_time_str = state.get("entry_time") or "10:05:00"
     entry_dt = datetime.strptime(
@@ -334,6 +371,26 @@ def check_pending_entries(state: dict[str, Any]) -> dict[str, Any]:
         for pos in state["positions"]:
             if pos["status"] != "pending_entry":
                 continue
+
+            status = client.get_order_status(
+                str(pos["order_id"]),
+                token_id=str(pos["yes_token_id"]),
+            )
+            if _entry_has_fill(status):
+                print(
+                    f"  TIMEOUT skipped: {pos['city']} already filled "
+                    f"({status.get('size_matched')} contracts)"
+                )
+                _apply_entry_fill(
+                    state,
+                    pos,
+                    fill_price=status.get("fill_price"),
+                    size_matched=status.get("size_matched"),
+                    now=now,
+                    event="entry_filled_on_timeout",
+                )
+                continue
+
             print(f"  TIMEOUT: cancelling {pos['city']} {pos['bucket_label']}")
             if pos.get("order_id"):
                 try:
@@ -572,7 +629,7 @@ def main() -> None:
 
     print(f"  [{now.strftime('%H:%M')}] Monitoring tick ({state['mode']})")
 
-    if state["phase"] == "entries_placed":
+    if any(p["status"] == "pending_entry" for p in state["positions"]):
         state = check_pending_entries(state)
 
     state = check_exit_conditions(state)
