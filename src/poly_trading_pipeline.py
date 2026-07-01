@@ -45,6 +45,18 @@ from src.sizing import has_edge  # noqa: E402
 BIAS_PATH = PROJECT_ROOT / "data" / "polymarket" / "wunderground_bias.json"
 WEATHER_TAG_ID = "104596"
 POLYMARKET_CITIES = ["austin", "houston", "los_angeles", "san_francisco"]
+HRRR_CITIES = [
+    "austin",
+    "houston",
+    "dallas",
+    "chicago",
+    "los_angeles",
+    "san_francisco",
+    "seattle",
+    "new_york",
+    "miami",
+    "atlanta",
+]
 POLY_CITY_ALIASES: dict[str, list[str]] = {
     "austin": ["austin"],
     "houston": ["houston"],

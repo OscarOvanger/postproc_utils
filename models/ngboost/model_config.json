@@ -1,0 +1,68 @@
+{
+  "model_type": "global",
+  "distribution": "gaussian",
+  "feature_columns": [
+    "hrrr_tmax",
+    "peak_cloud_cover",
+    "peak_solar_flux",
+    "snow_depth",
+    "temp_early_morning",
+    "nwp_tmax_openmeteo",
+    "tmax_lag1",
+    "tmax_lag2",
+    "tmax_roll3",
+    "tmax_roll7",
+    "hrrr_error_lag1",
+    "station_id",
+    "latitude",
+    "elevation",
+    "doy_sin",
+    "doy_cos",
+    "lgb_tmax_pred"
+  ],
+  "cities": [
+    "houston",
+    "los_angeles",
+    "austin",
+    "dallas",
+    "chicago"
+  ],
+  "train_dates": [
+    "2021-01-01",
+    "2024-12-31"
+  ],
+  "val_dates": [
+    "2025-01-01",
+    "2025-12-31"
+  ],
+  "val_crps": 1.2129,
+  "hyperparameters": {
+    "max_depth": 3,
+    "learning_rate": 0.02,
+    "minibatch_frac": 0.8,
+    "label": "d3_lr02_mb08",
+    "n_estimators_used": 793
+  },
+  "station_id_map": {
+    "houston": 0,
+    "los_angeles": 1,
+    "austin": 2,
+    "dallas": 3,
+    "chicago": 4,
+    "san_francisco": 5,
+    "seattle": 6,
+    "new_york": 7,
+    "miami": 8,
+    "atlanta": 9
+  },
+  "n_estimators_used": 793,
+  "scaler_path": "feature_scaler.pkl",
+  "stage1_model": "lgb_stage1.pkl",
+  "stage1_val_mae": 1.6492,
+  "stage1_val_rmse": 2.2163,
+  "sigma_calibration_k": 1.224878,
+  "nan_fill_medians": {
+    "temp_early_morning": 68.0,
+    "nwp_tmax_openmeteo": 76.1
+  }
+}

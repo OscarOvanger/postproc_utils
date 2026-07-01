@@ -18,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from src.poly_trading_pipeline import POLYMARKET_CITIES  # noqa: E402
+from src.poly_trading_pipeline import HRRR_CITIES  # noqa: E402
 from src.trackj.build_asos_features import fetch_asos_range, load_cached_asos  # noqa: E402
 
 CONFIG_PATH = PROJECT_ROOT / "config" / "city_config.json"
@@ -26,7 +26,7 @@ OUTPUT_PATH = PROJECT_ROOT / "data" / "polymarket" / "wunderground_targets.parqu
 RAW_ROOT = PROJECT_ROOT / "data" / "trackj" / "raw"
 
 DEFAULT_START = date(2021, 1, 1)
-DEFAULT_END = date(2026, 6, 23)
+DEFAULT_END = date(2026, 6, 25)
 MIN_READINGS = 12
 TMPF_MIN = -30.0
 TMPF_MAX = 140.0
@@ -127,7 +127,7 @@ def main() -> None:
     start_date = date.fromisoformat(args.start)
     end_date = date.fromisoformat(args.end)
     config = _load_config()
-    cities = [args.city] if args.city else list(POLYMARKET_CITIES)
+    cities = [args.city] if args.city else list(HRRR_CITIES)
 
     frames: list[pd.DataFrame] = []
     for city in cities:

@@ -48,16 +48,18 @@ GFS_AUDIT_COLUMNS = [
 ]
 
 
-def clear_herbie_cache() -> None:
-    """Delete Herbie GRIB2 cache to free disk space."""
+def clear_herbie_cache(verbose: bool = True) -> None:
+    """Delete Herbie GRIB2 scratch/cache dirs to free disk space."""
     for cache_dir in [
         Path.home() / ".cache" / "herbie",
         Path.home() / ".herbie",
+        Path.home() / "data" / "hrrr",
     ]:
         if cache_dir.exists():
             size_mb = sum(f.stat().st_size for f in cache_dir.rglob("*") if f.is_file()) / 1e6
             shutil.rmtree(cache_dir, ignore_errors=True)
-            print(f"  Cleared Herbie cache: {cache_dir} ({size_mb:.0f} MB)")
+            if verbose:
+                print(f"  Cleared Herbie cache: {cache_dir} ({size_mb:.0f} MB)")
 
 
 @dataclass(frozen=True)

@@ -90,5 +90,6 @@ reports/**
 docs/
 DATA_README.md
 config/polymarket_credentials.json
+config/resolved_markets_key.txt
 logs/poly_*
 data/polymarket_recon/
