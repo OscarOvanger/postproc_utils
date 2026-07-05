@@ -1,5 +1,20 @@
 # Raw market data (uploaded to HuggingFace instead)
 historic_tmax_market_data/
+datasets/
+
+# Feature caches and HRRR extracts (reproducible locally)
+data/asos_cache/
+data/openmeteo_cache/
+data/hrrr_v2/
+
+# Backtest output artifacts (reproducible from scripts)
+data/backtest_trades/
+data/backtest_trades_*/
+data/backtest_equity/
+data/backtest_equity_*/
+
+# NGBoost model artifacts (train locally)
+models/ngboost_v*/
 
 # Generated parquet splits and results (reproducible from raw data)
 data/splits/
@@ -91,5 +106,7 @@ docs/
 DATA_README.md
 config/polymarket_credentials.json
 config/resolved_markets_key.txt
+config/polymarketdata_key.txt
+config/telonex_key.txt
 logs/poly_*
 data/polymarket_recon/

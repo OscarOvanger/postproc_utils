@@ -40,9 +40,12 @@ MAKER_TICK = 0.01
 # slug -> display name (sorted alphabetically by display name in output)
 TARGET_CITIES: list[tuple[str, str]] = [
     ("austin", "Austin"),
+    ("atlanta", "Atlanta"),
+    ("chicago", "Chicago"),
     ("dallas", "Dallas"),
     ("houston", "Houston"),
     ("los_angeles", "Los Angeles"),
+    ("miami", "Miami"),
     ("new_york", "New York"),
     ("san_francisco", "San Francisco"),
     ("seattle", "Seattle"),
@@ -50,9 +53,12 @@ TARGET_CITIES: list[tuple[str, str]] = [
 
 CITY_SEARCH_ALIASES: dict[str, list[str]] = {
     "austin": ["austin"],
+    "atlanta": ["atlanta"],
+    "chicago": ["chicago"],
     "dallas": ["dallas"],
     "houston": ["houston"],
     "los_angeles": ["los angeles"],
+    "miami": ["miami"],
     "new_york": ["new york", "new york city", "nyc"],
     "san_francisco": ["san francisco"],
     "seattle": ["seattle"],
@@ -172,6 +178,7 @@ def _ingest_event_buckets(
     slug: str,
     display_name: str,
     buckets: dict[str, dict[str, Any]],
+    include_closed: bool = False,
 ) -> None:
     title = str(event.get("title", ""))
     description = str(event.get("description", ""))
@@ -193,7 +200,9 @@ def _ingest_event_buckets(
     )
 
     for market in event.get("markets") or []:
-        if market.get("closed") or market.get("acceptingOrders") is False:
+        if not include_closed and (
+            market.get("closed") or market.get("acceptingOrders") is False
+        ):
             continue
 
         question = str(market.get("question", ""))
@@ -226,6 +235,7 @@ def _discover_from_gamma_search(
     session: requests.Session,
     *,
     event_date: str,
+    include_closed: bool = False,
 ) -> dict[str, dict[str, Any]]:
     buckets: dict[str, dict[str, Any]] = {}
     month_day = _month_day_label(event_date)
@@ -250,6 +260,7 @@ def _discover_from_gamma_search(
                 slug=slug,
                 display_name=display_name,
                 buckets=buckets,
+                include_closed=include_closed,
             )
         time.sleep(0.15)
 
@@ -260,6 +271,7 @@ def _discover_from_weather_tag(
     session: requests.Session,
     *,
     event_date: str,
+    include_closed: bool = False,
 ) -> dict[str, dict[str, Any]]:
     buckets: dict[str, dict[str, Any]] = {}
     offset = 0
@@ -295,6 +307,7 @@ def _discover_from_weather_tag(
                         slug=slug,
                         display_name=display_name,
                         buckets=buckets,
+                        include_closed=include_closed,
                     )
 
         if len(batch) < 100:
@@ -305,14 +318,22 @@ def _discover_from_weather_tag(
     return buckets
 
 
-def discover_markets(event_date: str) -> dict[str, dict[str, Any]]:
+def discover_markets(
+    event_date: str,
+    *,
+    include_closed: bool = False,
+) -> dict[str, dict[str, Any]]:
     """Return slug -> {display_name, buckets: [{label, token_id}]}."""
     session = _build_http_session()
     merged: dict[str, dict[str, Any]] = {}
 
     for source in (
-        _discover_from_gamma_search(session, event_date=event_date),
-        _discover_from_weather_tag(session, event_date=event_date),
+        _discover_from_gamma_search(
+            session, event_date=event_date, include_closed=include_closed
+        ),
+        _discover_from_weather_tag(
+            session, event_date=event_date, include_closed=include_closed
+        ),
     ):
         for slug, entry in source.items():
             if slug not in merged:

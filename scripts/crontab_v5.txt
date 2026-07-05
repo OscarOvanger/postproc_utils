@@ -1,0 +1,19 @@
+# Polymarket v5 autotrader crontab
+# Install: crontab /Users/oscaro/Desktop/MCP_Project/scripts/crontab_v5.txt
+# Or paste into: crontab -e
+#
+# Assumes Mac system clock is US Central (America/Chicago).
+# Pushover credentials are loaded from .env inside cron_autotrader.sh.
+# Schedule 10-22 matches auto_trader_poly MONITOR_END_HOUR=22.
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin
+
+# Paper mode (enable for testing)
+*/5 10-22 * * * /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh paper
+
+# Live mode (uncomment for production — e.g. Monday Jul 6)
+# */5 10-22 * * * /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh live
+
+# TODO: Polymarket daily settlement — settle_daily_poly.py does not exist yet
+# 0 8 * * * cd /Users/oscaro/Desktop/MCP_Project && .venv/bin/python scripts/settle_daily_poly.py >> logs/cron_settle.log 2>&1

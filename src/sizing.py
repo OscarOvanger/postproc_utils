@@ -99,6 +99,25 @@ def has_edge(p: float, c: float, fee: float) -> bool:
     return (p - c) > 2 * fee
 
 
+def effective_probability(
+    model_prob: float,
+    market_price: float,
+    shrinkage_lambda: float = 1.0,
+) -> float:
+    """Blend model probability toward market price before edge/sizing decisions."""
+    return shrinkage_lambda * model_prob + (1.0 - shrinkage_lambda) * market_price
+
+
+def daily_cap_from_bankroll(bankroll: float, config: dict) -> float:
+    """Anti-cyclic daily budget with optional hard ceiling fallback."""
+    budget_floor = float(config.get("budget_floor", 70.0))
+    budget_divisor = float(config.get("budget_divisor", 4.0))
+    budget_cap_bankroll = float(config.get("budget_cap_bankroll", float("inf")))
+    hard_cap = float(config.get("daily_loss_cap", 6.0))
+    dynamic = (min(bankroll, budget_cap_bankroll) - budget_floor) / budget_divisor
+    return max(0.0, min(dynamic, hard_cap))
+
+
 def taker_fee_cents(contracts: int, price: float) -> int:
     """Exchange taker fee in cents."""
     return math.ceil(0.07 * contracts * price * (1 - price))

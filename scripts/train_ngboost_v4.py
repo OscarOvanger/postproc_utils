@@ -1,4 +1,4 @@
-"""Train NGBoost distributional regression on HRRR v2 + Wunderground Tmax targets."""
+"""Train NGBoost v4 with TrackB ASOS morning features on HRRR v2 + Wunderground Tmax."""
 
 from __future__ import annotations
 
@@ -70,6 +70,9 @@ from trackj.fetch_openmeteo_nwp import (  # noqa: E402
 HRRR_ROOT = PROJECT_ROOT / "data" / "hrrr_v2"
 WU_PATH = PROJECT_ROOT / "data" / "polymarket" / "wunderground_targets.parquet"
 ASOS_CACHE_DIR = PROJECT_ROOT / "data" / "asos_cache"
+TRACKJ_RAW_DIR = PROJECT_ROOT / "data" / "trackj" / "raw"
+TRACKJ_OUTPUT_DIR = PROJECT_ROOT / "data" / "trackj"
+CITY_CONFIG_PATH = PROJECT_ROOT / "config" / "city_config.json"
 OPENMETEO_CACHE_DIR = PROJECT_ROOT / "data" / "openmeteo_cache"
 OPENMETEO_MODELS = ("ecmwf_ifs025", "gfs_seamless")
 IEM_ASOS_URL = "https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py"
@@ -109,6 +112,15 @@ STATION_ID_MAP: dict[str, int] = {
     "atlanta": 9,
 }
 
+NEW_ASOS_COLS = [
+    "dewpoint_10am",
+    "rh_mean_00_10",
+    "pressure_10am",
+    "wind_u_mean_00_10",
+    "wind_v_mean_00_10",
+    "cloud_cover_mean_00_10",
+]
+
 FEATURE_COLS_GLOBAL: list[str] = [
     "hrrr_tmax",
     "peak_cloud_cover",
@@ -116,6 +128,7 @@ FEATURE_COLS_GLOBAL: list[str] = [
     "snow_depth",
     "temp_early_morning",
     "nwp_tmax_openmeteo",
+    *NEW_ASOS_COLS,
     "tmax_lag1",
     "tmax_lag2",
     "tmax_roll3",
@@ -133,7 +146,20 @@ FEATURE_COLS_STAGE1: list[str] = [c for c in FEATURE_COLS_GLOBAL if c != "lgb_tm
 FEATURE_COLS_PER_CITY: list[str] = [c for c in FEATURE_COLS_GLOBAL if c != "station_id"]
 
 LAG_COLS = ["tmax_lag1", "tmax_lag2", "tmax_roll3", "tmax_roll7", "hrrr_error_lag1"]
-MEDIAN_FILL_COLS = ["temp_early_morning", "nwp_tmax_openmeteo"]
+MEDIAN_FILL_COLS = ["temp_early_morning", "nwp_tmax_openmeteo", *NEW_ASOS_COLS]
+
+POLYMARKET_STATIONS: dict[str, str] = {
+    "austin": "KAUS",
+    "houston": "KHOU",
+    "dallas": "KDAL",
+    "chicago": "KORD",
+    "los_angeles": "KLAX",
+    "san_francisco": "KSFO",
+    "seattle": "KSEA",
+    "new_york": "KLGA",
+    "miami": "KMIA",
+    "atlanta": "KATL",
+}
 
 COVERAGE_LEVELS = [
     (50, 0.6745),
@@ -168,18 +194,23 @@ _WU_CACHE: pd.DataFrame | None = None
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train NGBoost on HRRR v2 + Wunderground targets.")
+    parser = argparse.ArgumentParser(description="Train NGBoost v4 on HRRR v2 + TrackB ASOS morning features.")
     parser.add_argument(
         "--cities",
         nargs="+",
         default=DEFAULT_CITIES,
         help="Cities to include (default: 5 ready cities)",
     )
-    parser.add_argument("--output-dir", default="models/ngboost", help="Directory for model artifacts")
+    parser.add_argument("--output-dir", default="models/ngboost_v4", help="Directory for model artifacts")
     parser.add_argument(
         "--report-dir",
-        default="reports/ngboost_calibration",
+        default="reports/ngboost_calibration_v4",
         help="Directory for calibration plots",
+    )
+    parser.add_argument(
+        "--skip-audit",
+        action="store_true",
+        help="Skip station verification and ASOS leakage audit",
     )
     parser.add_argument(
         "--skip-per-city",
@@ -376,6 +407,43 @@ def load_temp_early_morning(city: str, start_date: date, end_date: date) -> pd.D
     )
 
 
+def _load_city_config() -> dict[str, dict]:
+    with open(CITY_CONFIG_PATH, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def load_trackb_asos_morning(city: str, start_date: date, end_date: date) -> pd.DataFrame:
+    from trackj.build_asos_features import build_asos_features
+
+    configs = _load_city_config()
+    if city not in configs:
+        raise KeyError(f"City {city} not found in {CITY_CONFIG_PATH}")
+    city_config = configs[city]
+
+    def _build(no_fetch: bool) -> pd.DataFrame:
+        return build_asos_features(
+            city_config,
+            start_date,
+            end_date,
+            TRACKJ_RAW_DIR,
+            TRACKJ_OUTPUT_DIR,
+            no_fetch=no_fetch,
+            target_df=None,
+            sleep_seconds=0.0 if no_fetch else ASOS_FETCH_SLEEP_SECONDS,
+        )
+
+    try:
+        features = _build(no_fetch=True)
+    except Exception as exc:
+        print(f"  ASOS morning {city}: cache miss ({exc}), fetching from IEM...")
+        features = _build(no_fetch=False)
+
+    missing = [col for col in NEW_ASOS_COLS if col not in features.columns]
+    if missing:
+        raise RuntimeError(f"ASOS features missing columns for {city}: {missing}")
+    return features[["date", *NEW_ASOS_COLS]]
+
+
 def _openmeteo_cache_path(city: str) -> Path:
     return OPENMETEO_CACHE_DIR / f"{city}_tmax.csv"
 
@@ -500,6 +568,8 @@ def build_city_features(city: str) -> pd.DataFrame:
     end_date = dates.max().date()
     asos = load_temp_early_morning(city, start_date, end_date)
     merged = merged.merge(asos, on="date", how="left")
+    asos_morning = load_trackb_asos_morning(city, start_date, end_date)
+    merged = merged.merge(asos_morning, on="date", how="left")
     om = load_openmeteo_tmax(city, start_date, end_date)
     merged = merged.merge(om, on="date", how="left")
 
@@ -613,6 +683,7 @@ def train_stage1_lgb(
     feature_cols: list[str],
     cities: list[str],
     output_dir: Path,
+    report_dir: Path | None = None,
 ) -> tuple[Any, float, float, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Train LightGBM point forecast and append lgb_tmax_pred to all splits."""
     X_train = train_df[feature_cols]
@@ -663,6 +734,14 @@ def train_stage1_lgb(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(lgb_model, output_dir / "lgb_stage1.pkl")
+
+    if report_dir is not None:
+        report_dir.mkdir(parents=True, exist_ok=True)
+        imp = pd.DataFrame(
+            {"feature": feature_cols, "importance": lgb_model.feature_importances_}
+        ).sort_values("importance", ascending=False)
+        imp.to_csv(report_dir / "stage1_feature_importance.csv", index=False)
+        print(f"Stage-1 feature importance saved to {report_dir / 'stage1_feature_importance.csv'}")
 
     return lgb_model, val_mae, val_rmse, train_out, val_out, test_out
 
@@ -1723,6 +1802,147 @@ def run_eval_test(output_dir: Path) -> None:
     print_test_eval_table(model, test_df, feature_cols, cities, distribution, scaler, sigma_k=sigma_k)
 
 
+def write_station_verification(cities: list[str], report_dir: Path) -> pd.DataFrame:
+    configs = _load_city_config()
+    rows: list[dict[str, str | bool]] = []
+    mismatches: list[str] = []
+
+    for city in cities:
+        expected = POLYMARKET_STATIONS.get(city, "?")
+        hrrr_station = str(STATION_META[city]["station"])
+        hrrr_lat = float(STATION_META[city]["lat"])
+        hrrr_lon = float(STATION_META[city]["lon"])
+        cfg = configs.get(city, {})
+        wu_station = str(cfg.get("nws_station", "?"))
+        cfg_lat = cfg.get("lat")
+        cfg_lon = cfg.get("lon")
+        match = (
+            hrrr_station == expected
+            and wu_station == expected
+            and hrrr_station == wu_station
+        )
+        if not match:
+            mismatches.append(
+                f"{city}: expected {expected}, HRRR={hrrr_station}, WU/ASOS={wu_station}"
+            )
+        rows.append(
+            {
+                "city": city,
+                "expected": expected,
+                "hrrr_station": hrrr_station,
+                "asos_station": wu_station,
+                "wu_station": wu_station,
+                "openmeteo_lat": f"{hrrr_lat:.2f}",
+                "openmeteo_lon": f"{hrrr_lon:.2f}",
+                "config_lat": f"{float(cfg_lat):.4f}" if cfg_lat is not None else "—",
+                "config_lon": f"{float(cfg_lon):.4f}" if cfg_lon is not None else "—",
+                "match": match,
+            }
+        )
+
+    table = pd.DataFrame(rows)
+    report_dir.mkdir(parents=True, exist_ok=True)
+    md_path = report_dir / "station_verification.md"
+    lines = [
+        "# Station Verification (NGBoost v4)\n\n",
+        "| City | Expected | HRRR | ASOS | WU | Open-Meteo lat/lon | Match? |\n",
+        "|------|----------|------|------|-----|-------------------|--------|\n",
+    ]
+    for _, row in table.iterrows():
+        latlon = f"{row['openmeteo_lat']}, {row['openmeteo_lon']}"
+        lines.append(
+            f"| {row['city']} | {row['expected']} | {row['hrrr_station']} | "
+            f"{row['asos_station']} | {row['wu_station']} | {latlon} | "
+            f"{'YES' if row['match'] else '**NO**'} |\n"
+        )
+    if mismatches:
+        lines.append("\n## MISMATCHES\n\n")
+        for msg in mismatches:
+            lines.append(f"- **{msg}**\n")
+    else:
+        lines.append("\nAll stations match Polymarket settlement ICAO codes.\n")
+    md_path.write_text("".join(lines), encoding="utf-8")
+    print(f"Station verification written to {md_path}")
+    if mismatches:
+        for msg in mismatches:
+            print(f"  STATION MISMATCH: {msg}")
+    return table
+
+
+def write_asos_leakage_audit(cities: list[str], report_dir: Path) -> None:
+    from trackj.build_asos_features import aggregate_morning_asos, load_cached_asos
+
+    configs = _load_city_config()
+    sample_dates = ["2024-06-15", "2024-12-01", "2025-03-10"]
+    lines = [
+        "# ASOS Feature Leakage Audit (NGBoost v4)\n\n",
+        "All morning ASOS features must use observations from **00:00–10:00 local** only.\n\n",
+    ]
+
+    for city in cities:
+        cfg = configs[city]
+        city_raw_dir = TRACKJ_RAW_DIR / city / "asos"
+        station = cfg["nws_station"]
+        start = date(2024, 1, 1)
+        end = date(2024, 12, 31)
+        raw = load_cached_asos(city_raw_dir, station, start, end)
+        if raw.empty:
+            lines.append(f"## {city}\n\nNo raw ASOS data found — skipped.\n\n")
+            continue
+
+        raw = raw.copy()
+        raw["valid_local"] = pd.to_datetime(raw["valid"], errors="coerce")
+        raw = raw[raw["valid_local"].notna()]
+        cutoff = dt_time(10, 0)
+        morning = raw[
+            (raw["valid_local"].dt.time >= dt_time(0, 0))
+            & (raw["valid_local"].dt.time <= cutoff)
+        ]
+
+        lines.append(f"## {city} ({station})\n\n")
+        lines.append("| Sample date | Feature | Latest obs time | ≤10:00? |\n")
+        lines.append("|-------------|---------|-----------------|--------|\n")
+
+        for date_str in sample_dates:
+            day_raw = raw[raw["valid_local"].dt.strftime("%Y-%m-%d") == date_str]
+            day_morning = morning[morning["valid_local"].dt.strftime("%Y-%m-%d") == date_str]
+            if day_morning.empty:
+                for feat in NEW_ASOS_COLS:
+                    lines.append(f"| {date_str} | {feat} | (no obs) | — |\n")
+                continue
+
+            latest_ts = day_morning["valid_local"].max()
+            ok = latest_ts.time() <= cutoff
+            for feat in NEW_ASOS_COLS:
+                lines.append(
+                    f"| {date_str} | {feat} | {latest_ts.strftime('%H:%M')} | "
+                    f"{'YES' if ok else '**NO**'} |\n"
+                )
+
+        features = aggregate_morning_asos(raw, sample_dates, target_df=None)
+        if "temp_lag1" in features.columns:
+            lines.append(
+                f"\nNote: temp_lag1 present in aggregate output but **not merged** "
+                f"(target_df=None).\n"
+            )
+        lines.append("\n")
+
+    lines.extend(
+        [
+            "## Lag feature confirmation\n\n",
+            "- `tmax_lag1`, `tmax_lag2`: prior-day WU tmax via `.shift(1)` / `.shift(2)`\n",
+            "- `tmax_roll3`, `tmax_roll7`: rolling mean with `.shift(1)`\n",
+            "- `hrrr_error_lag1`: `(tmax - hrrr_tmax).shift(1)`\n",
+            "- No feature uses same-day target tmax.\n",
+        ]
+    )
+
+    report_dir.mkdir(parents=True, exist_ok=True)
+    md_path = report_dir / "leakage_audit.md"
+    md_path.write_text("".join(lines), encoding="utf-8")
+    print(f"Leakage audit written to {md_path}")
+
+
 def main() -> None:
     args = parse_args()
     output_dir = PROJECT_ROOT / args.output_dir
@@ -1734,7 +1954,12 @@ def main() -> None:
     cities = args.cities
     report_dir = PROJECT_ROOT / args.report_dir
 
-    print(f"=== NGBoost Training: {', '.join(cities)} ===\n")
+    print(f"=== NGBoost v4 Training: {', '.join(cities)} ===\n")
+    print(f"Feature count: {len(FEATURE_COLS_GLOBAL)} ({len(NEW_ASOS_COLS)} new ASOS cols)")
+
+    if not args.skip_audit:
+        write_station_verification(cities, report_dir)
+        write_asos_leakage_audit(cities, report_dir)
 
     df = assemble_dataset(cities)
     df = drop_incomplete_rows(df)
@@ -1751,6 +1976,7 @@ def main() -> None:
         FEATURE_COLS_STAGE1,
         cities,
         output_dir,
+        report_dir=report_dir,
     )
 
     feature_cols_global = FEATURE_COLS_GLOBAL

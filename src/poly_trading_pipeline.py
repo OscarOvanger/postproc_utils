@@ -40,11 +40,23 @@ from src.polymarket_api import (  # noqa: E402
     fetch_order_book_http,
     parse_bucket_label,
 )
-from src.sizing import has_edge  # noqa: E402
+from src.rolling_bias import compute_rolling_bias  # noqa: E402
+from src.sizing import daily_cap_from_bankroll, effective_probability, has_edge  # noqa: E402
 
 BIAS_PATH = PROJECT_ROOT / "data" / "polymarket" / "wunderground_bias.json"
 WEATHER_TAG_ID = "104596"
-POLYMARKET_CITIES = ["austin", "houston", "los_angeles", "san_francisco"]
+POLYMARKET_CITIES = [
+    "atlanta",
+    "austin",
+    "chicago",
+    "dallas",
+    "houston",
+    "los_angeles",
+    "miami",
+    "new_york",
+    "san_francisco",
+    "seattle",
+]
 HRRR_CITIES = [
     "austin",
     "houston",
@@ -58,10 +70,16 @@ HRRR_CITIES = [
     "atlanta",
 ]
 POLY_CITY_ALIASES: dict[str, list[str]] = {
+    "atlanta": ["atlanta"],
     "austin": ["austin"],
+    "chicago": ["chicago"],
+    "dallas": ["dallas"],
     "houston": ["houston"],
     "los_angeles": ["los angeles", "la"],
+    "miami": ["miami"],
+    "new_york": ["new york", "new york city", "nyc"],
     "san_francisco": ["san francisco", "sf"],
+    "seattle": ["seattle"],
 }
 POLY_PRICE_FLOOR = 0.10
 BUCKET_FROM_QUESTION_RE = re.compile(r"(?i)be (.+?) on [A-Za-z]+ \d{1,2}")
@@ -154,6 +172,58 @@ def apply_wunderground_bias(
         print(f"  {city}: Predicted Tmax: {tmax_cli}F (CLI-calibrated)")
         print(f"         Adjusted Tmax: {tmax_wu}F (Wunderground, bias={bias:+.1f})")
     return raw_forecasts, adjusted, bias_applied
+
+
+def _range_bucket_midpoints(labels: list[str]) -> list[tuple[str, float]]:
+    """Parse RANGE labels like '84-85' → (label, midpoint) sorted by midpoint."""
+    parsed: list[tuple[str, float]] = []
+    for label in labels:
+        match = re.match(r"^(\d+)-(\d+)$", str(label).strip())
+        if not match:
+            continue
+        lo, hi = int(match.group(1)), int(match.group(2))
+        parsed.append((str(label), (lo + hi) / 2.0))
+    return sorted(parsed, key=lambda x: x[1])
+
+
+def nearest_boundary_distance_f(
+    mu: float,
+    range_buckets: list[tuple[str, int, int]],
+) -> tuple[float, str | None, str | None]:
+    """Return (min_distance, lower_label, upper_label) at interior boundaries."""
+    if len(range_buckets) < 2:
+        return float("inf"), None, None
+    ordered = sorted(range_buckets, key=lambda b: (b[1] + b[2]) / 2.0)
+    best_dist = float("inf")
+    best_pair: tuple[str | None, str | None] = (None, None)
+    for i in range(len(ordered) - 1):
+        lo_label, _lo1, hi1 = ordered[i]
+        hi_label, lo2, _hi2 = ordered[i + 1]
+        boundary = (hi1 + lo2) / 2.0
+        dist = abs(mu - boundary)
+        if dist < best_dist:
+            best_dist = dist
+            best_pair = (lo_label, hi_label)
+    return best_dist, best_pair[0], best_pair[1]
+
+
+def basket_companion_label(
+    mu: float,
+    best_label: str,
+    range_buckets: list[tuple[str, int, int]],
+    margin_f: float,
+) -> str | None:
+    """If mu within margin of a boundary, return the adjacent bucket across it."""
+    if margin_f <= 0 or len(range_buckets) < 2:
+        return None
+    dist, lo_label, hi_label = nearest_boundary_distance_f(mu, range_buckets)
+    if dist > margin_f or lo_label is None or hi_label is None:
+        return None
+    if best_label == lo_label:
+        return hi_label
+    if best_label == hi_label:
+        return lo_label
+    return None
 
 
 def _parse_event_date_from_title(title: str, year_hint: str | None = None) -> str | None:
@@ -406,6 +476,7 @@ def compute_edge(
 
         city_sanity: list[dict[str, Any]] = []
         best: dict[str, Any] | None = None
+        shrinkage_lambda = float(config.get("shrinkage_lambda", 1.0))
 
         for bucket_label, model_prob in probs.items():
             entry_rows = day_df[day_df["bucket_label"].astype(str).eq(str(bucket_label))]
@@ -424,9 +495,12 @@ def compute_edge(
                 gamma_price=gamma_price,
                 tick_size=tick_size,
             )
-            edge = float(model_prob) - entry_price
+            p_eff = effective_probability(
+                float(model_prob), entry_price, shrinkage_lambda
+            )
+            edge = p_eff - entry_price
             passes_guardrail = entry_price >= price_floor and has_edge(
-                model_prob, entry_price, 0.0
+                p_eff, entry_price, 0.0
             )
 
             if entry_price < price_floor:
@@ -442,6 +516,7 @@ def compute_edge(
                 {
                     "bucket_label": str(bucket_label),
                     "model_prob": float(model_prob),
+                    "effective_prob": float(p_eff),
                     "gamma_price": gamma_price,
                     "market_price": entry_price,
                     "best_bid": best_bid,
@@ -458,6 +533,7 @@ def compute_edge(
                 "city": city,
                 "bucket_label": str(bucket_label),
                 "model_prob": float(model_prob),
+                "effective_prob": float(p_eff),
                 "gamma_price": gamma_price,
                 "market_price": entry_price,
                 "edge": edge,
@@ -489,6 +565,65 @@ def compute_edge(
             f"@ ${best['market_price']:.2f}"
         )
 
+        margin = float(config.get("basket_boundary_margin_f", 1.0))
+        range_buckets = [
+            (str(r["bucket_label"]), int(r["bucket_lower_inclusive_f"]), int(r["bucket_upper_inclusive_f"]))
+            for _, r in buckets.iterrows()
+            if str(r["bucket_type"]) == "RANGE"
+            and pd.notna(r["bucket_lower_inclusive_f"])
+            and pd.notna(r["bucket_upper_inclusive_f"])
+        ]
+        companion_label = basket_companion_label(
+            float(tmax_pred), best["bucket_label"], range_buckets, margin
+        )
+        if companion_label and companion_label in probs:
+            entry_rows = day_df[day_df["bucket_label"].astype(str).eq(companion_label)]
+            if not entry_rows.empty:
+                row = entry_rows.iloc[0]
+                gamma_price = _to_float(row.get("gamma_price"))
+                best_bid = _to_float(row.get("yes_bid_close"))
+                best_ask = _to_float(row.get("yes_ask_close"))
+                spread = _to_float(row.get("spread"))
+                tick_size = float(row.get("tick_size", 0.01))
+                entry_price = float(row["market_price"])
+                maker_entry_price = compute_maker_entry_price(
+                    best_bid=best_bid,
+                    best_ask=best_ask,
+                    gamma_price=gamma_price,
+                    tick_size=tick_size,
+                )
+                model_prob = float(probs[companion_label])
+                p_eff = effective_probability(model_prob, entry_price, shrinkage_lambda)
+                edge = p_eff - entry_price
+                passes_guardrail = entry_price >= price_floor and has_edge(p_eff, entry_price, 0.0)
+                if passes_guardrail and edge >= edge_threshold:
+                    companion = {
+                        "city": city,
+                        "bucket_label": companion_label,
+                        "model_prob": model_prob,
+                        "effective_prob": float(p_eff),
+                        "gamma_price": gamma_price,
+                        "market_price": entry_price,
+                        "edge": edge,
+                        "side": "YES",
+                        "yes_token_id": str(row["yes_token_id"]),
+                        "condition_id": str(row["condition_id"]),
+                        "best_bid": best_bid,
+                        "best_ask": best_ask,
+                        "spread": spread,
+                        "tick_size": tick_size,
+                        "maker_entry_price": maker_entry_price,
+                        "basket_companion": True,
+                    }
+                    edges.append(companion)
+                    for sanity_row in city_sanity:
+                        if sanity_row["bucket_label"] == companion_label:
+                            sanity_row["status"] = "SELECTED (basket)"
+                    print(
+                        f"  {city}: basket {companion_label} edge={edge:+.3f} "
+                        f"@ ${entry_price:.2f}"
+                    )
+
     return edges, reasons, sanity_rows
 
 
@@ -511,6 +646,9 @@ def select_trades_poly(
             continue
         selected.append(edge_row)
 
+    max_trades = int(config.get("max_trades_per_day", 2))
+    selected = selected[:max_trades]
+
     return selected, reasons
 
 
@@ -524,7 +662,7 @@ def size_positions_poly(
     n_default = int(config["n_contracts_default"])
     n_reduced = int(config["n_contracts_reduced"])
     threshold = float(config["bankroll_reduction_threshold"])
-    daily_cap = float(config["daily_loss_cap"])
+    daily_cap = daily_cap_from_bankroll(bankroll, config)
     n_contracts = n_reduced if bankroll < threshold else n_default
 
     sized: list[dict[str, Any]] = []
@@ -617,6 +755,17 @@ def prepare_poly_trades(
     metadata["forecasts"] = forecasts
     metadata["raw_forecasts"] = raw_forecasts
     metadata["bias_applied"] = bias_applied
+
+    halflife = int(poly_config.get("rolling_bias_halflife_days", 20))
+    rolling_applied: dict[str, float] = {}
+    print("\n--- Rolling bias correction ---")
+    for city in list(forecasts.keys()):
+        rolling = compute_rolling_bias(city, event_date, halflife)
+        forecasts[city] = int(round(forecasts[city] - rolling))
+        rolling_applied[city] = rolling
+        print(f"  {city}: rolling bias correction {rolling:+.2f}F → {forecasts[city]}F")
+    metadata["rolling_bias_applied"] = rolling_applied
+    metadata["forecasts"] = forecasts
 
     print("\n--- PHASE 2: Fetch Polymarket snapshot ---")
     market_df, market_reasons = fetch_market(
