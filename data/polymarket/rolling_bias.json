@@ -1,0 +1,52 @@
+{
+  "atlanta": {
+    "ewma": -0.1503,
+    "n_obs": 1995,
+    "as_of_date": "2026-06-25"
+  },
+  "austin": {
+    "ewma": -3.1986,
+    "n_obs": 1998,
+    "as_of_date": "2026-06-30"
+  },
+  "chicago": {
+    "ewma": 0.2796,
+    "n_obs": 1995,
+    "as_of_date": "2026-06-25"
+  },
+  "dallas": {
+    "ewma": 0.4196,
+    "n_obs": 1996,
+    "as_of_date": "2026-06-30"
+  },
+  "houston": {
+    "ewma": -2.5701,
+    "n_obs": 1996,
+    "as_of_date": "2026-06-30"
+  },
+  "los_angeles": {
+    "ewma": -1.8368,
+    "n_obs": 1996,
+    "as_of_date": "2026-06-30"
+  },
+  "miami": {
+    "ewma": -1.2787,
+    "n_obs": 1977,
+    "as_of_date": "2026-06-07"
+  },
+  "new_york": {
+    "ewma": -0.5298,
+    "n_obs": 1998,
+    "as_of_date": "2026-06-30"
+  },
+  "san_francisco": {
+    "ewma": -0.9161,
+    "n_obs": 1998,
+    "as_of_date": "2026-06-30"
+  },
+  "seattle": {
+    "ewma": -0.296,
+    "n_obs": 1998,
+    "as_of_date": "2026-06-30"
+  }
+}

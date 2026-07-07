@@ -371,6 +371,21 @@ def configure_output_tag(tag: str) -> None:
     EQUITY_DIR = PROJECT_ROOT / "data" / f"backtest_equity{suffix}"
 
 
+def filter_eligible_by_date(
+    df: pd.DataFrame,
+    start: str | None = None,
+    end: str | None = None,
+) -> pd.DataFrame:
+    """Filter eligible city-dates to an inclusive date window."""
+    out = df.copy()
+    out["date"] = out["date"].astype(str)
+    if start:
+        out = out[out["date"] >= start]
+    if end:
+        out = out[out["date"] <= end]
+    return out.reset_index(drop=True)
+
+
 def load_trading_config() -> dict[str, Any]:
     with open(DEPLOY_CONFIG_PATH, encoding="utf-8") as handle:
         return json.load(handle)

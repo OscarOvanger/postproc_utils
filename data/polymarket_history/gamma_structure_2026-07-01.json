@@ -1,0 +1,2086 @@
+{
+  "event_date": "2026-07-01",
+  "fetched_at": "2026-07-06T14:18:37.302944+00:00",
+  "cities": {
+    "atlanta": {
+      "event_id": "649597",
+      "title": "Highest temperature in Atlanta on July 1?",
+      "slug": "highest-temperature-in-atlanta-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "85\u00b0F or below",
+          "bucket_key": "85orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 85,
+          "question": "Will the highest temperature in Atlanta be 85\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-85forbelow",
+          "yes_token_id": "81955362350125758757545609661493815546687165682124081727924065544651618361022",
+          "condition_id": "0x7e99f161327cd762ba9b76a00201d6fa3eac579fbd226807c6c75f9547b50934",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "86-87\u00b0F",
+          "bucket_key": "86-87",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 86,
+          "bucket_upper_inclusive_f": 87,
+          "question": "Will the highest temperature in Atlanta be between 86-87\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-86-87f",
+          "yes_token_id": "72435357423449202663507126751915350243626061881737992659596236694254170419469",
+          "condition_id": "0x086c004e6b95173aa56e5dae8c8b3bd267c3d6d27284e2fff5ade1fa0b03492f",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "88-89\u00b0F",
+          "bucket_key": "88-89",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 88,
+          "bucket_upper_inclusive_f": 89,
+          "question": "Will the highest temperature in Atlanta be between 88-89\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-88-89f",
+          "yes_token_id": "3858036319701848619576995432359072937260621489225704311875898987408741737080",
+          "condition_id": "0x21f4643e56e9ba8ee1eb2ade7ece6e1263605a2bb4dc9c556384bf562f36549b",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "90-91\u00b0F",
+          "bucket_key": "90-91",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 90,
+          "bucket_upper_inclusive_f": 91,
+          "question": "Will the highest temperature in Atlanta be between 90-91\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-90-91f",
+          "yes_token_id": "11724403135960180449410746986150665293845778805562253892597708453847857353522",
+          "condition_id": "0xed0c4e9151ab5f7764f47c80fce94e628371e5052f947890b0885692f252a357",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "92-93\u00b0F",
+          "bucket_key": "92-93",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 92,
+          "bucket_upper_inclusive_f": 93,
+          "question": "Will the highest temperature in Atlanta be between 92-93\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-92-93f",
+          "yes_token_id": "3851616128924499649037681812971329864068824390057461204041343144092045874969",
+          "condition_id": "0x4d939fe7a4b01b84997e1c0bc327c9d3d1201942c637c78d4f4c57f3f7c06970",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "94-95\u00b0F",
+          "bucket_key": "94-95",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 94,
+          "bucket_upper_inclusive_f": 95,
+          "question": "Will the highest temperature in Atlanta be between 94-95\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-94-95f",
+          "yes_token_id": "34192446287374880201546160705662137192276058594798224300049729565055461470292",
+          "condition_id": "0x90c3ffbb3c3ee7126e3d93a34301b364c4dacb705b903b199963594cc92a4393",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "96-97\u00b0F",
+          "bucket_key": "96-97",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 96,
+          "bucket_upper_inclusive_f": 97,
+          "question": "Will the highest temperature in Atlanta be between 96-97\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-96-97f",
+          "yes_token_id": "78649540593654004997668880260404780146901157333358037122548910701334343859158",
+          "condition_id": "0x0ee52268c4c0746107ef7a006374795985fb579728dd3328ecc9a9de009d11e6",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "98-99\u00b0F",
+          "bucket_key": "98-99",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 98,
+          "bucket_upper_inclusive_f": 99,
+          "question": "Will the highest temperature in Atlanta be between 98-99\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-98-99f",
+          "yes_token_id": "75067724940257227853672129429526794222691216197277540336479495551151020092497",
+          "condition_id": "0xc71d00c8e37f40f2a7ba8b91147782cbe1cd61df1d2c1c71c22330a4107892ab",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "100-101\u00b0F",
+          "bucket_key": "100-101",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 100,
+          "bucket_upper_inclusive_f": 101,
+          "question": "Will the highest temperature in Atlanta be between 100-101\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-100-101f",
+          "yes_token_id": "4582831724985679929080277393313539878758086938285000477074134311777863177091",
+          "condition_id": "0xc2291eb97932f934176d88ecf06afa874e5f6ab6912d9a26d60c9ecb89b587a0",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "atlanta",
+          "event_date": "2026-07-01",
+          "bucket_label": "102-103\u00b0F",
+          "bucket_key": "102-103",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 102,
+          "bucket_upper_inclusive_f": 103,
+          "question": "Will the highest temperature in Atlanta be between 102-103\u00b0F on July 1?",
+          "slug": "highest-temperature-in-atlanta-on-july-1-2026-102-103f",
+          "yes_token_id": "39449505113818173231630140176316417628459973715401305780118760344409542515343",
+          "condition_id": "0x31fb1d2745656d8ca1e968744d36cc020874b1fca2c8da14865ecf85c599f7ef",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "austin": {
+      "event_id": "649600",
+      "title": "Highest temperature in Austin on July 1?",
+      "slug": "highest-temperature-in-austin-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "87\u00b0F or below",
+          "bucket_key": "87orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 87,
+          "question": "Will the highest temperature in Austin be 87\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-87forbelow",
+          "yes_token_id": "2169844552105975767884229110191720278997411141375378445284775725726882027579",
+          "condition_id": "0x5212d2bed130126c2be224e243f5691d3335bed2dfe5d815b3cfa8ff3bb730cc",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "88-89\u00b0F",
+          "bucket_key": "88-89",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 88,
+          "bucket_upper_inclusive_f": 89,
+          "question": "Will the highest temperature in Austin be between 88-89\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-88-89f",
+          "yes_token_id": "100696423380985166038388364979578555165552571269640842583945401011138236768126",
+          "condition_id": "0x46bd70119ddd4c98d7c30fdffce391be283dfd6aa5532d2e795312aea9de1a5a",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "90-91\u00b0F",
+          "bucket_key": "90-91",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 90,
+          "bucket_upper_inclusive_f": 91,
+          "question": "Will the highest temperature in Austin be between 90-91\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-90-91f",
+          "yes_token_id": "83961674168761260648312075637583629471799344188603069135234708933871119298723",
+          "condition_id": "0xa33a5f9bfb513c436eeacde9796ab320ff793bc09bd19a7a6b668fbcc38a238d",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "92-93\u00b0F",
+          "bucket_key": "92-93",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 92,
+          "bucket_upper_inclusive_f": 93,
+          "question": "Will the highest temperature in Austin be between 92-93\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-92-93f",
+          "yes_token_id": "57161821564861019254915897275530549835854323657386692440781062543517200615222",
+          "condition_id": "0xc362eb3dafd97f5933f2144d1735b4cf0ec1f106c22d6df3054bc9a7210d2708",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "94-95\u00b0F",
+          "bucket_key": "94-95",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 94,
+          "bucket_upper_inclusive_f": 95,
+          "question": "Will the highest temperature in Austin be between 94-95\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-94-95f",
+          "yes_token_id": "15339984060068402911441691691782706928285229318413067819737678117300349200267",
+          "condition_id": "0x07a58239fc37b2374f0507b18ef97e9e15fdb2d8dadeb44a6edef0498f26e3b3",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "96-97\u00b0F",
+          "bucket_key": "96-97",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 96,
+          "bucket_upper_inclusive_f": 97,
+          "question": "Will the highest temperature in Austin be between 96-97\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-96-97f",
+          "yes_token_id": "83010095464475198465309000778827763213371239620712119789508746596148149519158",
+          "condition_id": "0xe5820d67422c27de088715887ea7871bf91ad588d1f4d05e3b1185be9b16ee55",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "98-99\u00b0F",
+          "bucket_key": "98-99",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 98,
+          "bucket_upper_inclusive_f": 99,
+          "question": "Will the highest temperature in Austin be between 98-99\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-98-99f",
+          "yes_token_id": "77535507874763329252694814473348764145782059377886470567995753791429272973704",
+          "condition_id": "0xfc172d75eeab364793a24ccda8f64697b4ff06a556a347218ee386928624e018",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "100-101\u00b0F",
+          "bucket_key": "100-101",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 100,
+          "bucket_upper_inclusive_f": 101,
+          "question": "Will the highest temperature in Austin be between 100-101\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-100-101f",
+          "yes_token_id": "43645837708592198725994071713866003135635238074212714797305720783920405577471",
+          "condition_id": "0x90b740429aebcc8a0a163ca214a7770c7483c4ce22e0890a49c5fef2352be365",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "102-103\u00b0F",
+          "bucket_key": "102-103",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 102,
+          "bucket_upper_inclusive_f": 103,
+          "question": "Will the highest temperature in Austin be between 102-103\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-102-103f",
+          "yes_token_id": "92917360327845633665749174429015917559063806636659865372781118849340419251014",
+          "condition_id": "0x5e29a0e4eba37352aa408dbec001a9461c46cc1d4553df3d7d21e29ce3f9127e",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "austin",
+          "event_date": "2026-07-01",
+          "bucket_label": "104-105\u00b0F",
+          "bucket_key": "104-105",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 104,
+          "bucket_upper_inclusive_f": 105,
+          "question": "Will the highest temperature in Austin be between 104-105\u00b0F on July 1?",
+          "slug": "highest-temperature-in-austin-on-july-1-2026-104-105f",
+          "yes_token_id": "6452474684887813678463611846441644031299525687405965002677153420344548396287",
+          "condition_id": "0xab50a43272ec4f48341952d17d8696d63c84c7fc91b030d6de0e77d0962994c3",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "chicago": {
+      "event_id": "649599",
+      "title": "Highest temperature in Chicago on July 1?",
+      "slug": "highest-temperature-in-chicago-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "87\u00b0F or below",
+          "bucket_key": "87orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 87,
+          "question": "Will the highest temperature in Chicago be 87\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-87forbelow",
+          "yes_token_id": "60203261896902500306337189417633450528119577049317667093766428497986320239687",
+          "condition_id": "0x06c768196b3bea32103ab470ab455e94fd78688d7dd218ec4302dcafedb27fbd",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "88-89\u00b0F",
+          "bucket_key": "88-89",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 88,
+          "bucket_upper_inclusive_f": 89,
+          "question": "Will the highest temperature in Chicago be between 88-89\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-88-89f",
+          "yes_token_id": "33738348354952920517797008590416362807937676491611751560770128784312295700680",
+          "condition_id": "0x0af82388115340fbee03888de61fe5a2105873e1dbafb4122250fe7cd545d2bf",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "90-91\u00b0F",
+          "bucket_key": "90-91",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 90,
+          "bucket_upper_inclusive_f": 91,
+          "question": "Will the highest temperature in Chicago be between 90-91\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-90-91f",
+          "yes_token_id": "35510319884143772449016429966525783618116226574291434501647795260075750083522",
+          "condition_id": "0xe5d8719ae0771606fd1cbae9f1028a71b1742c351e7ed6d8b9163d79df97f92f",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "92-93\u00b0F",
+          "bucket_key": "92-93",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 92,
+          "bucket_upper_inclusive_f": 93,
+          "question": "Will the highest temperature in Chicago be between 92-93\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-92-93f",
+          "yes_token_id": "2333324199956580293020644295112690953142328981420406554546179073102091952775",
+          "condition_id": "0x4596fd5dc9ee1e533aedd6bed5f3c95ada73ae4d4260992d8fe77cc4eab75b94",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "94-95\u00b0F",
+          "bucket_key": "94-95",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 94,
+          "bucket_upper_inclusive_f": 95,
+          "question": "Will the highest temperature in Chicago be between 94-95\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-94-95f",
+          "yes_token_id": "59270356934982452578103065687972246460526172110156893206546682080062623221867",
+          "condition_id": "0xb1e3aac560fcb24a6901cc7fd8a2fb92b6f283bf5478947889c227090bb5f147",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "96-97\u00b0F",
+          "bucket_key": "96-97",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 96,
+          "bucket_upper_inclusive_f": 97,
+          "question": "Will the highest temperature in Chicago be between 96-97\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-96-97f",
+          "yes_token_id": "15683433631544862760282726634004642094236450869170043839303116641570181528486",
+          "condition_id": "0xe7369f875256e196c0c72ad2042d52e96bd1777f3bae725db70f25bb9773d8d4",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "98-99\u00b0F",
+          "bucket_key": "98-99",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 98,
+          "bucket_upper_inclusive_f": 99,
+          "question": "Will the highest temperature in Chicago be between 98-99\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-98-99f",
+          "yes_token_id": "104888822918515333484936473064112885288904596783450640312812194201696570671150",
+          "condition_id": "0x042cc522f41f7dff145bf648b3ff67f1a4b871325ad17d14beaf512330734144",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "100-101\u00b0F",
+          "bucket_key": "100-101",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 100,
+          "bucket_upper_inclusive_f": 101,
+          "question": "Will the highest temperature in Chicago be between 100-101\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-100-101f",
+          "yes_token_id": "47034707327155242669493050066372121067877122685256649720399039682348168393248",
+          "condition_id": "0x63175186cf8da5fe62f956679b8132eaa2cec6502b28f7bfefea232715218640",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "102-103\u00b0F",
+          "bucket_key": "102-103",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 102,
+          "bucket_upper_inclusive_f": 103,
+          "question": "Will the highest temperature in Chicago be between 102-103\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-102-103f",
+          "yes_token_id": "30445857796984272630079315187594468033953713816061827483500010369795178986669",
+          "condition_id": "0xe5d46eab334d454895a39af2091681776bbb2501f59135a5a8c9f4b47ab624b0",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "chicago",
+          "event_date": "2026-07-01",
+          "bucket_label": "104-105\u00b0F",
+          "bucket_key": "104-105",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 104,
+          "bucket_upper_inclusive_f": 105,
+          "question": "Will the highest temperature in Chicago be between 104-105\u00b0F on July 1?",
+          "slug": "highest-temperature-in-chicago-on-july-1-2026-104-105f",
+          "yes_token_id": "31144256300528251668573759781901703592942855735280513106493067333589720834242",
+          "condition_id": "0xe5b5c1700fc51e3d9d2dbcc15098be94e10f5f7c8c24cb9e8a2dacc844206ee2",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "dallas": {
+      "event_id": "649596",
+      "title": "Highest temperature in Dallas on July 1?",
+      "slug": "highest-temperature-in-dallas-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "91\u00b0F or below",
+          "bucket_key": "91orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 91,
+          "question": "Will the highest temperature in Dallas be 91\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-91forbelow",
+          "yes_token_id": "35343059981787814862772480359766174107610417908406907952822809251590100729271",
+          "condition_id": "0x07b820354b5812f082a2d8e0c025637e981d2b55dea1f64c0adb3afb6e8b79e3",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "92-93\u00b0F",
+          "bucket_key": "92-93",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 92,
+          "bucket_upper_inclusive_f": 93,
+          "question": "Will the highest temperature in Dallas be between 92-93\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-92-93f",
+          "yes_token_id": "49669031577576940497823090978600731187390345705990644326607074066614394391127",
+          "condition_id": "0x0c15faf8350e56946998f8167bb784ddb4d9f9c94cad08abef444e05415f779e",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "94-95\u00b0F",
+          "bucket_key": "94-95",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 94,
+          "bucket_upper_inclusive_f": 95,
+          "question": "Will the highest temperature in Dallas be between 94-95\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-94-95f",
+          "yes_token_id": "100267359840069205820643997827909187139043136261227100864386302137763879475353",
+          "condition_id": "0xb358ca46d9301706b64e165ccc8aff79d8c521663af4c48e5b91f1759285f109",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "96-97\u00b0F",
+          "bucket_key": "96-97",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 96,
+          "bucket_upper_inclusive_f": 97,
+          "question": "Will the highest temperature in Dallas be between 96-97\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-96-97f",
+          "yes_token_id": "69113171653270916154617486979182021248065128274248818025459908044292579422791",
+          "condition_id": "0x6e5ee9a74b42d855a37f8e49adbf0ac3ef8926e106830b12c39716f7896438f6",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "98-99\u00b0F",
+          "bucket_key": "98-99",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 98,
+          "bucket_upper_inclusive_f": 99,
+          "question": "Will the highest temperature in Dallas be between 98-99\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-98-99f",
+          "yes_token_id": "16038574093850580550952717899280976868555827778462453470310634394117471238137",
+          "condition_id": "0xd9020cce4c21e35d2ec8c7916abc7e5ccd021bd8560868e2f9353f81126ec6a0",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "100-101\u00b0F",
+          "bucket_key": "100-101",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 100,
+          "bucket_upper_inclusive_f": 101,
+          "question": "Will the highest temperature in Dallas be between 100-101\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-100-101f",
+          "yes_token_id": "26493865762867411228360152997934700967899936992959637430548576604372780006147",
+          "condition_id": "0x10bef6db2ecacb312c64b25ef04413c7c5dc896a75b6dd41a7d35fc5b3b52621",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "102-103\u00b0F",
+          "bucket_key": "102-103",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 102,
+          "bucket_upper_inclusive_f": 103,
+          "question": "Will the highest temperature in Dallas be between 102-103\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-102-103f",
+          "yes_token_id": "2853820039230784561238067130568204236519600616247611643199110643590017446603",
+          "condition_id": "0x85507d8d72ce3b130953cccc5edd8d2134c2c32a7202781f0de09536fb1d56db",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "104-105\u00b0F",
+          "bucket_key": "104-105",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 104,
+          "bucket_upper_inclusive_f": 105,
+          "question": "Will the highest temperature in Dallas be between 104-105\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-104-105f",
+          "yes_token_id": "19516911491048737457704710279774021781865556391028423352151539825773666729876",
+          "condition_id": "0x3d2487e5817a9521223d846e21b7b4e7d3ba7a2ef97c3de39a93fc1c237f8e78",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "106-107\u00b0F",
+          "bucket_key": "106-107",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 106,
+          "bucket_upper_inclusive_f": 107,
+          "question": "Will the highest temperature in Dallas be between 106-107\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-106-107f",
+          "yes_token_id": "93703591904061837726613649419702323106700084961255006846252561283611196443775",
+          "condition_id": "0xc9bfcd8d545a4a48a6b18619e43722c36d1d4de005086afbaef333b2c771d00a",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "dallas",
+          "event_date": "2026-07-01",
+          "bucket_label": "108-109\u00b0F",
+          "bucket_key": "108-109",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 108,
+          "bucket_upper_inclusive_f": 109,
+          "question": "Will the highest temperature in Dallas be between 108-109\u00b0F on July 1?",
+          "slug": "highest-temperature-in-dallas-on-july-1-2026-108-109f",
+          "yes_token_id": "109819657507358751627584099850113884175832761528637316970790971720667434928152",
+          "condition_id": "0x4de02f2147623f28ba477e0af4e2ca32c5f56ecfd9400a82d7f931bd48f2cc15",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "houston": {
+      "event_id": "649602",
+      "title": "Highest temperature in Houston on July 1?",
+      "slug": "highest-temperature-in-houston-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "84-85\u00b0F",
+          "bucket_key": "84-85",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 84,
+          "bucket_upper_inclusive_f": 85,
+          "question": "Will the highest temperature in Houston be between 84-85\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-84-85f",
+          "yes_token_id": "13650061998991251592762935007007349672645621173469073266211298706618446710419",
+          "condition_id": "0x76ef8220104804f605799c188950ff2366fc9b448a2b538b78bdd2ff4e0fb1f5",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "86-87\u00b0F",
+          "bucket_key": "86-87",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 86,
+          "bucket_upper_inclusive_f": 87,
+          "question": "Will the highest temperature in Houston be between 86-87\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-86-87f",
+          "yes_token_id": "85091430518582638440958376570849289596574368516703627341391031427885064830811",
+          "condition_id": "0x7391b4da024ed150475527cd0f3c1b29794675f8cb26c5ce44c3e03e490278ae",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "88-89\u00b0F",
+          "bucket_key": "88-89",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 88,
+          "bucket_upper_inclusive_f": 89,
+          "question": "Will the highest temperature in Houston be between 88-89\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-88-89f",
+          "yes_token_id": "70425763341986366464435704050604319544256363139135705798390201813376173565307",
+          "condition_id": "0xa1a27afed3752f7bd8111e6ac84347b9606011f4e5aa803e3a3db68173555dda",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "90-91\u00b0F",
+          "bucket_key": "90-91",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 90,
+          "bucket_upper_inclusive_f": 91,
+          "question": "Will the highest temperature in Houston be between 90-91\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-90-91f",
+          "yes_token_id": "47662894818065306400760247184215471438886563257116520995656934059479999422616",
+          "condition_id": "0x7c24100a60e441fa51995f08faecdc2c8807e60f899b6cf86c8fb5876601807d",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "92-93\u00b0F",
+          "bucket_key": "92-93",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 92,
+          "bucket_upper_inclusive_f": 93,
+          "question": "Will the highest temperature in Houston be between 92-93\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-92-93f",
+          "yes_token_id": "110098914123634490885635289352245360199484311797259742152859614134054912036824",
+          "condition_id": "0xcfde3ff30f4c44b61c418086fea3555e5b0e728616f5324ab5fdc2f202f00098",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "94-95\u00b0F",
+          "bucket_key": "94-95",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 94,
+          "bucket_upper_inclusive_f": 95,
+          "question": "Will the highest temperature in Houston be between 94-95\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-94-95f",
+          "yes_token_id": "79988301661957075636854457294581279061863195491460665952608319413221749609537",
+          "condition_id": "0xaebf269299b910278f4e0c257470110262e44e1a150f3303d63df35db9ba2b07",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "96-97\u00b0F",
+          "bucket_key": "96-97",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 96,
+          "bucket_upper_inclusive_f": 97,
+          "question": "Will the highest temperature in Houston be between 96-97\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-96-97f",
+          "yes_token_id": "74191939055192905180245024662644580590167282583694543709466320372332770169919",
+          "condition_id": "0xc60d806030fb5fac9be8a70812623869661684c59229db9941510a34465553e5",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "98-99\u00b0F",
+          "bucket_key": "98-99",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 98,
+          "bucket_upper_inclusive_f": 99,
+          "question": "Will the highest temperature in Houston be between 98-99\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-98-99f",
+          "yes_token_id": "100791064821385211809906825417123990111530942553612567624261372227772947884238",
+          "condition_id": "0x6ae3f1ceec9b64081f9df2be366033eff4c1e0fef44a03387da28e6d8749327b",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "100-101\u00b0F",
+          "bucket_key": "100-101",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 100,
+          "bucket_upper_inclusive_f": 101,
+          "question": "Will the highest temperature in Houston be between 100-101\u00b0F on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-100-101f",
+          "yes_token_id": "82033647222656089254099889802593384003445394441517863280129581188162921931129",
+          "condition_id": "0xbc93b53f80a92d0e83bcd1862a48203f2f4ce8ac87ef1f37b21e32f4e6eb76aa",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "houston",
+          "event_date": "2026-07-01",
+          "bucket_label": "83\u00b0F or below",
+          "bucket_key": "83orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 83,
+          "question": "Will the highest temperature in Houston be 83\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-houston-on-july-1-2026-83forbelow",
+          "yes_token_id": "16997852477549713479279453731135480066782654688163518795477998871201105459473",
+          "condition_id": "0x93683aa78d5d5d940d25280c6114eb38ce34ac67fe29d995f57cfbcc1499489f",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "los_angeles": {
+      "event_id": "649603",
+      "title": "Highest temperature in Los Angeles on July 1?",
+      "slug": "highest-temperature-in-los-angeles-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "59\u00b0F or below",
+          "bucket_key": "59orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 59,
+          "question": "Will the highest temperature in Los Angeles be 59\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-59forbelow",
+          "yes_token_id": "104293206569772474247650668759847544026848326920097204479194302615983379983410",
+          "condition_id": "0x7f82f6d42189544c0091ab0eed782512c87f934fb8e5d9d45a97345c9156e1ba",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "60-61\u00b0F",
+          "bucket_key": "60-61",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 60,
+          "bucket_upper_inclusive_f": 61,
+          "question": "Will the highest temperature in Los Angeles be between 60-61\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-60-61f",
+          "yes_token_id": "28725670495066497066430129869618790699865301926177521811263760179309386061675",
+          "condition_id": "0x8d12420f056c2791affadf30775f667424f4c9645b812d8f3470aa82e568f7c1",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "62-63\u00b0F",
+          "bucket_key": "62-63",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 62,
+          "bucket_upper_inclusive_f": 63,
+          "question": "Will the highest temperature in Los Angeles be between 62-63\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-62-63f",
+          "yes_token_id": "83635235051930223877634521417319857993414471515707600237846653003913663974188",
+          "condition_id": "0xa03ff6627b44b99bf464fa7479505027e3cdb8cb5d210803e0e9b21e2ab59b71",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "64-65\u00b0F",
+          "bucket_key": "64-65",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 64,
+          "bucket_upper_inclusive_f": 65,
+          "question": "Will the highest temperature in Los Angeles be between 64-65\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-64-65f",
+          "yes_token_id": "59451188611297175322762725406515411859489110833145718889333307723145370805080",
+          "condition_id": "0x8023917d918f7f305bffb024b7a06206f6526e9f4fce651002a9910a59362366",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "66-67\u00b0F",
+          "bucket_key": "66-67",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 66,
+          "bucket_upper_inclusive_f": 67,
+          "question": "Will the highest temperature in Los Angeles be between 66-67\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-66-67f",
+          "yes_token_id": "13366291672202194151422363624841726286960285477583989060672354049043698735988",
+          "condition_id": "0xbf88cbde3d084c3ba3129f605e298a239d636165b714941e62dd6d692bcc45af",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "68-69\u00b0F",
+          "bucket_key": "68-69",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 68,
+          "bucket_upper_inclusive_f": 69,
+          "question": "Will the highest temperature in Los Angeles be between 68-69\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-68-69f",
+          "yes_token_id": "31907175986244164947888465127496129565849941016335522233441451160415214990194",
+          "condition_id": "0xbf0ca32e153685a4277dc4dbba8c22155f1e543b2470181b553a671271ae9b04",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "70-71\u00b0F",
+          "bucket_key": "70-71",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 70,
+          "bucket_upper_inclusive_f": 71,
+          "question": "Will the highest temperature in Los Angeles be between 70-71\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-70-71f",
+          "yes_token_id": "51422508448432180339370163798950796511991939390078304222898952281742219090112",
+          "condition_id": "0x69f6377e6cae9067b0a062fe45a49bf1a4f3e115639559f03fa5fc5447986c22",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "72-73\u00b0F",
+          "bucket_key": "72-73",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 72,
+          "bucket_upper_inclusive_f": 73,
+          "question": "Will the highest temperature in Los Angeles be between 72-73\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-72-73f",
+          "yes_token_id": "47144577904447247963564841509177983584541750450780952595161942289897158058388",
+          "condition_id": "0xe875bd71c9ce47e4467d811d444605b9e3425f8ceaddfa5012690e1ecc57029f",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "74-75\u00b0F",
+          "bucket_key": "74-75",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 74,
+          "bucket_upper_inclusive_f": 75,
+          "question": "Will the highest temperature in Los Angeles be between 74-75\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-74-75f",
+          "yes_token_id": "19364486853829992699916632836643412407656757280388636569503904011671722382897",
+          "condition_id": "0x4f4fd5da82df5d1029a8557cbfc1536c5e83330751c0fc7d6c73d12c5a83da0e",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "los_angeles",
+          "event_date": "2026-07-01",
+          "bucket_label": "76-77\u00b0F",
+          "bucket_key": "76-77",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 76,
+          "bucket_upper_inclusive_f": 77,
+          "question": "Will the highest temperature in Los Angeles be between 76-77\u00b0F on July 1?",
+          "slug": "highest-temperature-in-los-angeles-on-july-1-2026-76-77f",
+          "yes_token_id": "64198634722580048905616057372462651136102430905691408948185608037754431990862",
+          "condition_id": "0x42f520d2c9af2f3c8892450ff985c169f208acde6090096407701040c5f3088f",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "miami": {
+      "event_id": "649598",
+      "title": "Highest temperature in Miami on July 1?",
+      "slug": "highest-temperature-in-miami-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "83\u00b0F or below",
+          "bucket_key": "83orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 83,
+          "question": "Will the highest temperature in Miami be 83\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-83forbelow",
+          "yes_token_id": "88833363502803760636932860120838647820571949824427826532371053085253398832387",
+          "condition_id": "0xce0ca81892e4b22e9e38e98e495ea5c68c25736500c78ab62dd46d38969cd9c2",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "84-85\u00b0F",
+          "bucket_key": "84-85",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 84,
+          "bucket_upper_inclusive_f": 85,
+          "question": "Will the highest temperature in Miami be between 84-85\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-84-85f",
+          "yes_token_id": "100272537125936099679822824316190696980949668601935480985646303373602116900778",
+          "condition_id": "0x29ee65a938db9309e787d60fba77d97866c12a503d331f8dea05a841e243b908",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "86-87\u00b0F",
+          "bucket_key": "86-87",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 86,
+          "bucket_upper_inclusive_f": 87,
+          "question": "Will the highest temperature in Miami be between 86-87\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-86-87f",
+          "yes_token_id": "107153118650618785114940371019247489513370399906598644266722015359592161864705",
+          "condition_id": "0xb77d0fbcee1a8beffdd692b2f32630cd6e68931412fc94691649c0256ec588c6",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "88-89\u00b0F",
+          "bucket_key": "88-89",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 88,
+          "bucket_upper_inclusive_f": 89,
+          "question": "Will the highest temperature in Miami be between 88-89\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-88-89f",
+          "yes_token_id": "48541316566484124187239359459856349463563135315819117028914087598358182544094",
+          "condition_id": "0x727709a3a4c057ce56627115040bfe9e6ca5b5f7e04367a20ed5a4fe7aee737b",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "90-91\u00b0F",
+          "bucket_key": "90-91",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 90,
+          "bucket_upper_inclusive_f": 91,
+          "question": "Will the highest temperature in Miami be between 90-91\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-90-91f",
+          "yes_token_id": "25939313284666687991401984266928457815256804876470841818970908491804895375995",
+          "condition_id": "0xc1dcdc7ffbb5dc952792c39e1cf57cfca74d3ea86339e635f1e011c52833c20d",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "92-93\u00b0F",
+          "bucket_key": "92-93",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 92,
+          "bucket_upper_inclusive_f": 93,
+          "question": "Will the highest temperature in Miami be between 92-93\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-92-93f",
+          "yes_token_id": "94699643190319257936450418469189372187503618777916456675774667479031159951089",
+          "condition_id": "0xd9862309e90619e544cf3a947e5e38169e77cc9b07532f6bcf0ff877f502e8a1",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "94-95\u00b0F",
+          "bucket_key": "94-95",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 94,
+          "bucket_upper_inclusive_f": 95,
+          "question": "Will the highest temperature in Miami be between 94-95\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-94-95f",
+          "yes_token_id": "74818932232704728664378980956825315561607370080329806485145574944010676561579",
+          "condition_id": "0x1209a89c7f498302b2cfed4827d962cbb268ca1e0c3f5b03efa4d073d818203d",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "96-97\u00b0F",
+          "bucket_key": "96-97",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 96,
+          "bucket_upper_inclusive_f": 97,
+          "question": "Will the highest temperature in Miami be between 96-97\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-96-97f",
+          "yes_token_id": "51221368713033159423277226795372634038822138425067823224858259428269722604580",
+          "condition_id": "0x78786aa494387ccadf92ca6675c9971d02102bc56a562c4f274b25bbad706ddc",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "98-99\u00b0F",
+          "bucket_key": "98-99",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 98,
+          "bucket_upper_inclusive_f": 99,
+          "question": "Will the highest temperature in Miami be between 98-99\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-98-99f",
+          "yes_token_id": "64749545534014132545425729724367334302462066756723261105284477267589348193054",
+          "condition_id": "0x1e96e03225ce1ed678b02e7fcd5835a77483f5f7e652daf1aedc4613e5ac53e7",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "miami",
+          "event_date": "2026-07-01",
+          "bucket_label": "100-101\u00b0F",
+          "bucket_key": "100-101",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 100,
+          "bucket_upper_inclusive_f": 101,
+          "question": "Will the highest temperature in Miami be between 100-101\u00b0F on July 1?",
+          "slug": "highest-temperature-in-miami-on-july-1-2026-100-101f",
+          "yes_token_id": "92754322810845557849227250314060517626265705415381402670656677222960403223420",
+          "condition_id": "0x731d26f5049798c6049acafa7a6653fd58e8c97c0441b7d849af5808db18578d",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "new_york": {
+      "event_id": "649595",
+      "title": "Highest temperature in NYC on July 1?",
+      "slug": "highest-temperature-in-nyc-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "85\u00b0F or below",
+          "bucket_key": "85orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 85,
+          "question": "Will the highest temperature in New York City be 85\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-85forbelow",
+          "yes_token_id": "38041368179880439069757337001855128756212683566849983114886202741302978093881",
+          "condition_id": "0xc7022351447d1657bf4a15619d5e845c38a8aff03e392bc93c0ee068130b370d",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "86-87\u00b0F",
+          "bucket_key": "86-87",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 86,
+          "bucket_upper_inclusive_f": 87,
+          "question": "Will the highest temperature in New York City be between 86-87\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-86-87f",
+          "yes_token_id": "15414482393195931131020395412410642044232168094630470094434977047097394852235",
+          "condition_id": "0x9aa54dc3861e0168b030b63864cd76a39070520c5446375e75bf48adeff3a62d",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "88-89\u00b0F",
+          "bucket_key": "88-89",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 88,
+          "bucket_upper_inclusive_f": 89,
+          "question": "Will the highest temperature in New York City be between 88-89\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-88-89f",
+          "yes_token_id": "108252563850038179950089731945280693180583595120483338507699077644195870824436",
+          "condition_id": "0x362e56d6fdc65a415e751cf6e428311d63ee698e5fa59ca54ca27739967cb46e",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "90-91\u00b0F",
+          "bucket_key": "90-91",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 90,
+          "bucket_upper_inclusive_f": 91,
+          "question": "Will the highest temperature in New York City be between 90-91\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-90-91f",
+          "yes_token_id": "39166931718766134975423087526196782255442285361543782315131780101758409427955",
+          "condition_id": "0x9039b3e11bbb4fd293e16f544c9e077e47612cd0ada67f083147e19b3b406fb8",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "92-93\u00b0F",
+          "bucket_key": "92-93",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 92,
+          "bucket_upper_inclusive_f": 93,
+          "question": "Will the highest temperature in New York City be between 92-93\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-92-93f",
+          "yes_token_id": "12742829344934233329261954062392726596415060923310847806502374096932894449837",
+          "condition_id": "0x6f0765ab90e5ca3efff0ed2f776cec85f8350edd80c5c0b2b857e62cbd161c97",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "94-95\u00b0F",
+          "bucket_key": "94-95",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 94,
+          "bucket_upper_inclusive_f": 95,
+          "question": "Will the highest temperature in New York City be between 94-95\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-94-95f",
+          "yes_token_id": "109742523822177551709706737483269998686732678748421987183897486613446987581165",
+          "condition_id": "0xcda0f736fedc237f408f637b3f359cdbb1907eff4fa74ca47a2259fc81756a07",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "96-97\u00b0F",
+          "bucket_key": "96-97",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 96,
+          "bucket_upper_inclusive_f": 97,
+          "question": "Will the highest temperature in New York City be between 96-97\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-96-97f",
+          "yes_token_id": "69704834195346313862246026484237586908236950498159894119187750780885320046090",
+          "condition_id": "0x414163834c47aa104c427cb7c8099cf91a16b234e3bd309cb2d183ba56a433e1",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "98-99\u00b0F",
+          "bucket_key": "98-99",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 98,
+          "bucket_upper_inclusive_f": 99,
+          "question": "Will the highest temperature in New York City be between 98-99\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-98-99f",
+          "yes_token_id": "81461566508732360718873646006168401014625307883609626205847331228956063922676",
+          "condition_id": "0x82d32328668904499604f767097074063bd9dda42d30ca15719a47eda9651a15",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "100-101\u00b0F",
+          "bucket_key": "100-101",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 100,
+          "bucket_upper_inclusive_f": 101,
+          "question": "Will the highest temperature in New York City be between 100-101\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-100-101f",
+          "yes_token_id": "36866484263462165908463209353430229231856222466002650327649388499626533738633",
+          "condition_id": "0x935c9eafaa93550cece33511b2703e76ce584ad69df57e9f073c52b0ef6a0b30",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "new_york",
+          "event_date": "2026-07-01",
+          "bucket_label": "102-103\u00b0F",
+          "bucket_key": "102-103",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 102,
+          "bucket_upper_inclusive_f": 103,
+          "question": "Will the highest temperature in New York City be between 102-103\u00b0F on July 1?",
+          "slug": "highest-temperature-in-nyc-on-july-1-2026-102-103f",
+          "yes_token_id": "93032715550955895839305962765755074560818802031704555643644508316476505150713",
+          "condition_id": "0xc0b15466b1347b35d2f9958dc7bb7763fe810a8dec17c63762bfda1bc3e429c0",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "san_francisco": {
+      "event_id": "649604",
+      "title": "Highest temperature in San Francisco on July 1?",
+      "slug": "highest-temperature-in-san-francisco-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "72-73\u00b0F",
+          "bucket_key": "72-73",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 72,
+          "bucket_upper_inclusive_f": 73,
+          "question": "Will the highest temperature in San Francisco be between 72-73\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-72-73f",
+          "yes_token_id": "99502241718191632453630904296453244597197319095648114395688104686694972983600",
+          "condition_id": "0x46d3a25a80e6253998db82278281711b208b5eda2faa125cc5f79ab1025e7e6d",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "74-75\u00b0F",
+          "bucket_key": "74-75",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 74,
+          "bucket_upper_inclusive_f": 75,
+          "question": "Will the highest temperature in San Francisco be between 74-75\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-74-75f",
+          "yes_token_id": "93560375680486122965088542587855933529367458012547714239297456522033104033436",
+          "condition_id": "0x31a75ccee6f22f457e03e5252fbdfd5ffaf1647a7cef37452725b0191385cc93",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "57\u00b0F or below",
+          "bucket_key": "57orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 57,
+          "question": "Will the highest temperature in San Francisco be 57\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-57forbelow",
+          "yes_token_id": "59974538982428457742911192153756575492704491654832312957041922663015148865778",
+          "condition_id": "0x926ba99b02d90ae9bc5b1e6d474a7393302be4ec27a9a595705ac5fb03ef91ea",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "58-59\u00b0F",
+          "bucket_key": "58-59",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 58,
+          "bucket_upper_inclusive_f": 59,
+          "question": "Will the highest temperature in San Francisco be between 58-59\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-58-59f",
+          "yes_token_id": "93378374429092262266694547888502486296777927093001313633037026687884330779945",
+          "condition_id": "0xce74d04cf25f433b9a08ce9b0d5c38dad0703dbebdc1d8cc1b705a8ae2ae8053",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "60-61\u00b0F",
+          "bucket_key": "60-61",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 60,
+          "bucket_upper_inclusive_f": 61,
+          "question": "Will the highest temperature in San Francisco be between 60-61\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-60-61f",
+          "yes_token_id": "82851220002209463284250252171132661265249239080736459426552757731381622007644",
+          "condition_id": "0xd5a3adf4485a02415b15522694089fcf843c276e4dc809617c91e9cb53c103d8",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "62-63\u00b0F",
+          "bucket_key": "62-63",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 62,
+          "bucket_upper_inclusive_f": 63,
+          "question": "Will the highest temperature in San Francisco be between 62-63\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-62-63f",
+          "yes_token_id": "40048287627565667180917105635653551432245210034335928494679476533737139129126",
+          "condition_id": "0xc7d260715d16316ae995b1cdf3f2d19109b706f46f95ee2589fc179ad389b444",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "64-65\u00b0F",
+          "bucket_key": "64-65",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 64,
+          "bucket_upper_inclusive_f": 65,
+          "question": "Will the highest temperature in San Francisco be between 64-65\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-64-65f",
+          "yes_token_id": "90181782953247831970955134433905516277813522285447594855857371567122158991830",
+          "condition_id": "0x704b120ba8f12fff7bf407028f4b0840d8aa1d7d22587d3a86dbdcae6d669c10",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "66-67\u00b0F",
+          "bucket_key": "66-67",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 66,
+          "bucket_upper_inclusive_f": 67,
+          "question": "Will the highest temperature in San Francisco be between 66-67\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-66-67f",
+          "yes_token_id": "29255397352654846297763215767075344755441079905125417156018509837086473747284",
+          "condition_id": "0xcf4a3426cba5321dbdd3814752ef253ced25f035f56b97804fd0f9bb7a751426",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "68-69\u00b0F",
+          "bucket_key": "68-69",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 68,
+          "bucket_upper_inclusive_f": 69,
+          "question": "Will the highest temperature in San Francisco be between 68-69\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-68-69f",
+          "yes_token_id": "936620057425412936483734772123892336624492006998563142124051863146853468131",
+          "condition_id": "0x5d3f63d2602e8cfd3b9babcd85b0b8bf7b1d64a215f0702df7b570ca1e063581",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "san_francisco",
+          "event_date": "2026-07-01",
+          "bucket_label": "70-71\u00b0F",
+          "bucket_key": "70-71",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 70,
+          "bucket_upper_inclusive_f": 71,
+          "question": "Will the highest temperature in San Francisco be between 70-71\u00b0F on July 1?",
+          "slug": "highest-temperature-in-san-francisco-on-july-1-2026-70-71f",
+          "yes_token_id": "4560456593793087388439373768078949268306095235099642254869238197455776573848",
+          "condition_id": "0x04ca323dbb51a68f97514509d9439d5f3ad4e5f95e02eef06fa34731e786b9ca",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        }
+      ]
+    },
+    "seattle": {
+      "event_id": "649587",
+      "title": "Highest temperature in Seattle on July 1?",
+      "slug": "highest-temperature-in-seattle-on-july-1-2026",
+      "closed": true,
+      "markets": [
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "59\u00b0F or below",
+          "bucket_key": "59orbelow",
+          "bucket_type": "LESS_THAN",
+          "bucket_lower_inclusive_f": null,
+          "bucket_upper_inclusive_f": 59,
+          "question": "Will the highest temperature in Seattle be 59\u00b0F or below on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-59forbelow",
+          "yes_token_id": "27680365942244611926068559172367822344242644345804486714132736107701999114154",
+          "condition_id": "0x1108a87b8fbddd764e0a92e5690fd8f8f0c60ae0ed1fd5a4f32be85a306bfbf3",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "60-61\u00b0F",
+          "bucket_key": "60-61",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 60,
+          "bucket_upper_inclusive_f": 61,
+          "question": "Will the highest temperature in Seattle be between 60-61\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-60-61f",
+          "yes_token_id": "83037204621723954659877907292774516616260501892758208105905762570905437788071",
+          "condition_id": "0xb6a11e4323775641e0d48b5b3f947b132866297032c46c3d5ef0bdaba5f1feb7",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "62-63\u00b0F",
+          "bucket_key": "62-63",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 62,
+          "bucket_upper_inclusive_f": 63,
+          "question": "Will the highest temperature in Seattle be between 62-63\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-62-63f",
+          "yes_token_id": "70201501768459882657868038243584840891362970192730305509200737908994511733374",
+          "condition_id": "0x3e9a0e2f23a35ab44c0e4b00e20e77b1f381430e89c612165853c444ef9eeb33",
+          "gamma_price": 1.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "1",
+            "0"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "64-65\u00b0F",
+          "bucket_key": "64-65",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 64,
+          "bucket_upper_inclusive_f": 65,
+          "question": "Will the highest temperature in Seattle be between 64-65\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-64-65f",
+          "yes_token_id": "54837180611176482189093775816618610578341642793911923526332525363022210840906",
+          "condition_id": "0x3c0bbf14c3d14f1bd319921e5e9923ef83b0a27c0c3ed4a1349d7899487db0ed",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "66-67\u00b0F",
+          "bucket_key": "66-67",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 66,
+          "bucket_upper_inclusive_f": 67,
+          "question": "Will the highest temperature in Seattle be between 66-67\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-66-67f",
+          "yes_token_id": "21837458617015306259948925145219426231602873787735734327100886303709571304028",
+          "condition_id": "0x989f97c22cf22c3917ef712bc6e190357f386d92710fcb0e11d76dcb6c48b4fa",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "68-69\u00b0F",
+          "bucket_key": "68-69",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 68,
+          "bucket_upper_inclusive_f": 69,
+          "question": "Will the highest temperature in Seattle be between 68-69\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-68-69f",
+          "yes_token_id": "46004550057364603565546218620529022418395954529438227601635787189154140595044",
+          "condition_id": "0xe0e4329b74a165a97b729c7164d3e54604231e786bd822ba3d513448b4c7d645",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "70-71\u00b0F",
+          "bucket_key": "70-71",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 70,
+          "bucket_upper_inclusive_f": 71,
+          "question": "Will the highest temperature in Seattle be between 70-71\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-70-71f",
+          "yes_token_id": "99109310976708441880485817762580325281802848131142884285202070102633574497230",
+          "condition_id": "0xe76fbec0500c901f5b5446b00e0bc05d3775b723428dc91254729605e7216d35",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "72-73\u00b0F",
+          "bucket_key": "72-73",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 72,
+          "bucket_upper_inclusive_f": 73,
+          "question": "Will the highest temperature in Seattle be between 72-73\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-72-73f",
+          "yes_token_id": "103175244330191693034612022717617972832955508670619581123056908013130879397802",
+          "condition_id": "0xac7fa37ac27160e8f44683c835641d65673150ba4f375da49d99432df4c60156",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "74-75\u00b0F",
+          "bucket_key": "74-75",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 74,
+          "bucket_upper_inclusive_f": 75,
+          "question": "Will the highest temperature in Seattle be between 74-75\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-74-75f",
+          "yes_token_id": "16350525882113684122486638398196407672611418404635540257561689061407090389287",
+          "condition_id": "0xd601cf60e67c8f4074d736672ca86a2400ad3f08c541bec0d35936aa742a28b0",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        },
+        {
+          "city": "seattle",
+          "event_date": "2026-07-01",
+          "bucket_label": "76-77\u00b0F",
+          "bucket_key": "76-77",
+          "bucket_type": "RANGE",
+          "bucket_lower_inclusive_f": 76,
+          "bucket_upper_inclusive_f": 77,
+          "question": "Will the highest temperature in Seattle be between 76-77\u00b0F on July 1?",
+          "slug": "highest-temperature-in-seattle-on-july-1-2026-76-77f",
+          "yes_token_id": "67090502895205497824505184702041261259330679926906505311637337348000196705237",
+          "condition_id": "0x57c0186d016d7a811d0abc94406b71eb739d2b67b947223b78eb9e17ae770917",
+          "gamma_price": 0.0,
+          "tick_size": "0.001",
+          "outcome_prices": [
+            "0",
+            "1"
+          ],
+          "closed": true
+        }
+      ]
+    }
+  }
+}

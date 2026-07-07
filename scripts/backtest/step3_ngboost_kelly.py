@@ -27,7 +27,7 @@ from backtest.ngboost_inference import (  # noqa: E402
 )
 from ngboost_kelly import BetCandidate, allocate_ngboost_kelly  # noqa: E402
 from rolling_bias import RollingBiasCache  # noqa: E402
-from poly_trading_pipeline import basket_companion_label  # noqa: E402
+from poly_trading_pipeline import basket_companion_label, load_wunderground_bias  # noqa: E402
 
 EXIT_VARIANTS = ["hold_to_settlement", "profit_target_15c"]
 PROFIT_TARGET_MIN_ENTRY = 0.55
@@ -66,9 +66,15 @@ def collect_day_bets(
     models: NgBoostBacktestModels,
     config: dict,
     bias_cache: RollingBiasCache,
+    wu_bias: dict,
+    *,
+    disable_rolling_bias: bool = False,
+    disable_basket: bool = False,
 ) -> tuple[list[BetCandidate], dict[str, float]]:
     lam = bc.shrinkage_lambda(config)
     margin = float(config.get("basket_boundary_margin_f", 1.0))
+    if disable_basket:
+        margin = 0.0
     candidates: list[BetCandidate] = []
     raw_mu_by_city: dict[str, float] = {}
 
@@ -96,8 +102,10 @@ def collect_day_bets(
             continue
         mu, _sigma = mu_sigma
         raw_mu_by_city[city] = mu
-        bias = bias_cache.bias(city, date_str)
-        mu_adj = mu - bias
+        static_bias = float(wu_bias.get(city, {}).get("median_bias", 0.0))
+        mu_wu = mu - static_bias
+        bias = 0.0 if disable_rolling_bias else bias_cache.bias(city, date_str)
+        mu_adj = mu_wu - bias
         probs = predict_bucket_probs_from_mu(models, city, date_str, bucket_labels, mu_adj)
         if not probs:
             continue
@@ -151,6 +159,7 @@ def record_day_residuals(
     raw_mu_by_city: dict[str, float],
     bias_cache: RollingBiasCache,
     wu: pd.DataFrame,
+    wu_bias: dict,
     date_str: str,
 ) -> None:
     for _, row in day_rows.iterrows():
@@ -161,7 +170,9 @@ def record_day_residuals(
         if wu_row.empty:
             continue
         actual = float(wu_row.iloc[0]["wunderground_tmax"])
-        bias_cache.record(city, date_str, raw_mu_by_city[city], actual)
+        static_bias = float(wu_bias.get(city, {}).get("median_bias", 0.0))
+        corrected_mu = raw_mu_by_city[city] - static_bias
+        bias_cache.record(city, date_str, corrected_mu, actual)
 
 
 def filter_top_bets(
@@ -217,7 +228,16 @@ def settle_trade(
     }
 
 
-def run_kelly_variant(exit_variant: str, eligible: pd.DataFrame, config: dict, force: bool) -> None:
+def run_kelly_variant(
+    exit_variant: str,
+    eligible: pd.DataFrame,
+    config: dict,
+    force: bool,
+    wu_bias: dict,
+    *,
+    disable_rolling_bias: bool = False,
+    disable_basket: bool = False,
+) -> None:
     out_path = bc.TRADES_DIR / f"ngboost_kelly_{exit_variant}.jsonl"
     if bc.skip_if_exists(out_path, force, f"step3/kelly/{exit_variant}"):
         return
@@ -226,6 +246,7 @@ def run_kelly_variant(exit_variant: str, eligible: pd.DataFrame, config: dict, f
     wu = bc.load_wu_targets()
     bias_cache = RollingBiasCache(
         halflife_days=int(config.get("rolling_bias_halflife_days", 20)),
+        max_correction_f=float(config.get("max_rolling_correction_f", 1.5)),
     )
     bias_cache.seed_from_parquet()
     bankroll = bc.INITIAL_BANKROLL_USD
@@ -241,7 +262,15 @@ def run_kelly_variant(exit_variant: str, eligible: pd.DataFrame, config: dict, f
 
         day_rows = eligible[eligible["date"] == date_str]
         budget = bc.daily_budget_ngboost(bankroll, config)
-        day_bets, raw_mu = collect_day_bets(day_rows, models, config, bias_cache)
+        day_bets, raw_mu = collect_day_bets(
+            day_rows,
+            models,
+            config,
+            bias_cache,
+            wu_bias,
+            disable_rolling_bias=disable_rolling_bias,
+            disable_basket=disable_basket,
+        )
         bets = filter_top_bets(day_bets, config)
 
         if not bets or budget <= 0:
@@ -255,7 +284,7 @@ def run_kelly_variant(exit_variant: str, eligible: pd.DataFrame, config: dict, f
                     "no_trade_reason": "no_positive_edge" if bets else "zero_budget",
                     "bankroll_after": bankroll,
                 })
-            record_day_residuals(day_rows, raw_mu, bias_cache, wu, date_str)
+            record_day_residuals(day_rows, raw_mu, bias_cache, wu, wu_bias, date_str)
             continue
 
         alloc = allocate_ngboost_kelly(
@@ -316,7 +345,7 @@ def run_kelly_variant(exit_variant: str, eligible: pd.DataFrame, config: dict, f
             if rec.get("traded"):
                 rec["bankroll_after"] = bankroll
 
-        record_day_residuals(day_rows, raw_mu, bias_cache, wu, date_str)
+        record_day_residuals(day_rows, raw_mu, bias_cache, wu, wu_bias, date_str)
 
     bc.write_jsonl(out_path, records)
     traded = sum(1 for r in records if r.get("traded"))
@@ -326,7 +355,15 @@ def run_kelly_variant(exit_variant: str, eligible: pd.DataFrame, config: dict, f
     )
 
 
-def run_flat_variant(eligible: pd.DataFrame, config: dict, force: bool) -> None:
+def run_flat_variant(
+    eligible: pd.DataFrame,
+    config: dict,
+    force: bool,
+    wu_bias: dict,
+    *,
+    disable_rolling_bias: bool = False,
+    disable_basket: bool = False,
+) -> None:
     exit_variant = "hold_to_settlement"
     out_path = bc.TRADES_DIR / f"ngboost_flat_{exit_variant}.jsonl"
     if bc.skip_if_exists(out_path, force, "step3/flat"):
@@ -337,6 +374,7 @@ def run_flat_variant(eligible: pd.DataFrame, config: dict, force: bool) -> None:
     wu = bc.load_wu_targets()
     bias_cache = RollingBiasCache(
         halflife_days=int(config.get("rolling_bias_halflife_days", 20)),
+        max_correction_f=float(config.get("max_rolling_correction_f", 1.5)),
     )
     bias_cache.seed_from_parquet()
     bankroll = bc.INITIAL_BANKROLL_USD
@@ -351,7 +389,15 @@ def run_flat_variant(eligible: pd.DataFrame, config: dict, force: bool) -> None:
 
         day_rows = eligible[eligible["date"] == date_str]
         budget = bc.daily_budget_ngboost(bankroll, config)
-        day_bets, raw_mu = collect_day_bets(day_rows, models, config, bias_cache)
+        day_bets, raw_mu = collect_day_bets(
+            day_rows,
+            models,
+            config,
+            bias_cache,
+            wu_bias,
+            disable_rolling_bias=disable_rolling_bias,
+            disable_basket=disable_basket,
+        )
         bets = filter_top_bets(
             day_bets,
             config,
@@ -359,7 +405,7 @@ def run_flat_variant(eligible: pd.DataFrame, config: dict, force: bool) -> None:
         )
 
         if not bets or budget <= 0:
-            record_day_residuals(day_rows, raw_mu, bias_cache, wu, date_str)
+            record_day_residuals(day_rows, raw_mu, bias_cache, wu, wu_bias, date_str)
             continue
 
         n_contracts = flat_contracts(bankroll, config)
@@ -398,7 +444,7 @@ def run_flat_variant(eligible: pd.DataFrame, config: dict, force: bool) -> None:
             if rec.get("traded"):
                 rec["bankroll_after"] = bankroll
 
-        record_day_residuals(day_rows, raw_mu, bias_cache, wu, date_str)
+        record_day_residuals(day_rows, raw_mu, bias_cache, wu, wu_bias, date_str)
 
     bc.write_jsonl(out_path, records)
     traded = sum(1 for r in records if r.get("traded"))
@@ -409,6 +455,23 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="NGBoost Kelly backtest")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--output-tag", default="", help="Output suffix, e.g. v5")
+    parser.add_argument("--start-date", default=None, help="Inclusive start date YYYY-MM-DD")
+    parser.add_argument("--end-date", default=None, help="Inclusive end date YYYY-MM-DD")
+    parser.add_argument(
+        "--disable-rolling-bias",
+        action="store_true",
+        help="Skip rolling EWMA bias correction",
+    )
+    parser.add_argument(
+        "--disable-basket",
+        action="store_true",
+        help="Skip boundary basket companion bets",
+    )
+    parser.add_argument(
+        "--flat-only",
+        action="store_true",
+        help="Run only ngboost_flat_hold_to_settlement variant",
+    )
     parser.add_argument(
         "--include-flat",
         action="store_true",
@@ -427,15 +490,27 @@ def main() -> None:
         sys.exit(1)
 
     eligible = pd.read_csv(bc.ELIGIBLE_DATES_CSV)
+    eligible = bc.filter_eligible_by_date(eligible, args.start_date, args.end_date)
     if eligible.empty:
-        print("ERROR: no eligible city-dates")
+        print("ERROR: no eligible city-dates after date filter")
         sys.exit(1)
+    if args.start_date or args.end_date:
+        print(
+            f"Date filter: {args.start_date or '...'} to {args.end_date or '...'} "
+            f"→ {len(eligible)} city-dates"
+        )
 
     config = bc.load_trading_config()
-    for variant in EXIT_VARIANTS:
-        run_kelly_variant(variant, eligible, config, args.force)
-    if args.include_flat or args.output_tag in ("v5", "v5b"):
-        run_flat_variant(eligible, config, args.force)
+    wu_bias = load_wunderground_bias()
+    bias_kwargs = {
+        "disable_rolling_bias": args.disable_rolling_bias,
+        "disable_basket": args.disable_basket,
+    }
+    if not args.flat_only:
+        for variant in EXIT_VARIANTS:
+            run_kelly_variant(variant, eligible, config, args.force, wu_bias, **bias_kwargs)
+    if args.include_flat or args.output_tag in ("v5", "v5b") or args.flat_only:
+        run_flat_variant(eligible, config, args.force, wu_bias, **bias_kwargs)
 
 
 if __name__ == "__main__":

@@ -1,16 +1,34 @@
 #!/bin/bash
 # Polymarket v5 autotrader cron wrapper (paper or live).
 # Usage: cron_autotrader.sh [paper|live]
+
+# Capture all stderr so cron failures are never silent.
+STDERR_LOG="/Users/oscaro/Desktop/MCP_Project/logs/cron_stderr.log"
+mkdir -p "$(dirname "$STDERR_LOG")"
+exec 2>> "$STDERR_LOG"
+echo "=== $(date) === $0 $*" >> "$STDERR_LOG"
+
 set -euo pipefail
 
-PROJECT_DIR="${HOME}/Desktop/MCP_Project"
+PROJECT_DIR="/Users/oscaro/Desktop/MCP_Project"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 cd "$PROJECT_DIR"
 
-mkdir -p logs
+LOG="$PROJECT_DIR/logs/cron_autotrader_$(date +%Y-%m-%d).log"
+mkdir -p "$PROJECT_DIR/logs"
+echo "=== cron_autotrader.sh $(date) ===" >> "$LOG"
 
 # Activate venv
-# shellcheck source=/dev/null
-source "$PROJECT_DIR/.venv/bin/activate"
+if [[ -f "$PROJECT_DIR/.venv/bin/activate" ]]; then
+    # shellcheck source=/dev/null
+    source "$PROJECT_DIR/.venv/bin/activate"
+else
+    echo "ERROR: venv not found at $PROJECT_DIR/.venv/bin/activate" >&2
+    exit 1
+fi
+
+echo "  which python: $(which python)" >> "$LOG"
+echo "  python version: $(python --version 2>&1)" >> "$LOG"
 
 export TRACKJ_SKIP_HF_SYNC=1
 
@@ -21,6 +39,7 @@ if [[ -f "$PROJECT_DIR/.env" ]]; then
     source "$PROJECT_DIR/.env"
     set +a
 fi
+echo "  .env loaded: $(test -f "$PROJECT_DIR/.env" && echo yes || echo no)" >> "$LOG"
 
 send_pushover() {
     local title="$1"
@@ -86,5 +105,7 @@ echo "Exit code: $EXIT_CODE" >> "$LOG"
 if [[ "$EXIT_CODE" -ne 0 ]]; then
     send_pushover "Autotrader error ($MODE)" "cron_autotrader exited with code ${EXIT_CODE}. See ${LOG}"
 fi
+
+echo "=== completed $(date) ===" >> "$LOG"
 
 exit "$EXIT_CODE"

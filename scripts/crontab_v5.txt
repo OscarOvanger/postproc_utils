@@ -10,10 +10,10 @@ SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin
 
 # Paper mode (enable for testing)
-*/5 10-22 * * * /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh paper
+# */5 10-22 * * * /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh paper
 
 # Live mode (uncomment for production — e.g. Monday Jul 6)
-# */5 10-22 * * * /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh live
+*/5 10-22 * * * /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh live
 
-# TODO: Polymarket daily settlement — settle_daily_poly.py does not exist yet
-# 0 8 * * * cd /Users/oscaro/Desktop/MCP_Project && .venv/bin/python scripts/settle_daily_poly.py >> logs/cron_settle.log 2>&1
+# Polymarket daily settlement — settles yesterday's trades at 8 AM CT
+0 8 * * * /bin/bash -c 'cd /Users/oscaro/Desktop/MCP_Project && .venv/bin/python scripts/settle_daily_poly.py --date yesterday' >> /Users/oscaro/Desktop/MCP_Project/logs/cron_settle.log 2>&1

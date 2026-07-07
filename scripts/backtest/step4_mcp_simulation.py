@@ -149,15 +149,23 @@ def main() -> None:
         action="store_true",
         help="Also simulate ngboost_flat_hold_to_settlement",
     )
+    parser.add_argument(
+        "--flat-only",
+        action="store_true",
+        help="Simulate only ngboost_flat_hold_to_settlement",
+    )
     args = parser.parse_args()
 
     if args.output_tag:
         bc.configure_output_tag(args.output_tag)
 
     config = bc.load_trading_config()
-    variants = list(VARIANTS)
-    if args.include_flat or args.output_tag in ("v5", "v5b"):
-        variants.append(FLAT_VARIANT)
+    if args.flat_only:
+        variants = [FLAT_VARIANT]
+    else:
+        variants = list(VARIANTS)
+        if args.include_flat or args.output_tag in ("v5", "v5b"):
+            variants.append(FLAT_VARIANT)
 
     for variant in variants:
         simulate_variant(variant, config, args.force)

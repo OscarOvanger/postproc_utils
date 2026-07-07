@@ -22,6 +22,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 import train_ngboost as ng  # noqa: E402
 from backtest.ngboost_inference import NgBoostBacktestModels  # noqa: E402
+from src.poly_trading_pipeline import load_wunderground_bias  # noqa: E402
 from src.rolling_bias import save_residuals_and_snapshot  # noqa: E402
 
 WU_PATH = PROJECT_ROOT / "data" / "polymarket" / "wunderground_targets.parquet"
@@ -56,6 +57,7 @@ def main() -> None:
     args = parser.parse_args()
 
     models = NgBoostBacktestModels.from_path_file(Path(args.model_path_file))
+    wu_bias = load_wunderground_bias()
     rows: list[dict] = []
     t0 = time.time()
 
@@ -72,13 +74,15 @@ def main() -> None:
             actual = float(row[ng.TARGET])
             if not np.isfinite(m) or not np.isfinite(actual):
                 continue
+            static_bias = float(wu_bias.get(city, {}).get("median_bias", 0.0))
+            corrected_mu = m - static_bias
             rows.append(
                 {
                     "city": city,
                     "date": str(row["date"]),
-                    "forecast": m,
+                    "forecast": corrected_mu,
                     "wu_actual": actual,
-                    "residual": m - actual,
+                    "residual": corrected_mu - actual,
                 }
             )
 
@@ -86,6 +90,15 @@ def main() -> None:
     print(f"Computed {len(df)} residuals across {df['city'].nunique()} cities in {time.time() - t0:.1f}s")
     save_residuals_and_snapshot(df, halflife_days=args.halflife, min_obs=args.min_obs)
     print(f"Wrote residuals and snapshot (halflife={args.halflife})")
+
+    snapshot_path = PROJECT_ROOT / "data" / "polymarket" / "rolling_bias.json"
+    with open(snapshot_path, encoding="utf-8") as handle:
+        snapshot = json.load(handle)
+    print("\nPer-city EWMA (after static WU bias correction):")
+    for city in sorted(snapshot):
+        ewma = snapshot[city]["ewma"]
+        flag = " *** EXCEEDS ±1.5F" if abs(ewma) > 1.5 else ""
+        print(f"  {city}: {ewma:+.4f}F (n={snapshot[city]['n_obs']}){flag}")
 
 
 if __name__ == "__main__":

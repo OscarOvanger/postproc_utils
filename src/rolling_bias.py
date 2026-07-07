@@ -13,8 +13,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESIDUALS_PATH = PROJECT_ROOT / "data" / "polymarket" / "rolling_bias_residuals.parquet"
 SNAPSHOT_PATH = PROJECT_ROOT / "data" / "polymarket" / "rolling_bias.json"
 
-# TODO(settlement): append TrackB (forecast - wu_actual) rows after each live day settles.
-
 
 def ewma_bias(
     dated_residuals: list[tuple[str, float]],
@@ -55,6 +53,7 @@ def compute_rolling_bias(
     event_date: str,
     halflife_days: int = 20,
     min_obs: int = 5,
+    max_correction_f: float = 1.5,
     residuals_df: pd.DataFrame | None = None,
 ) -> float:
     """EWMA of (forecast - wu_actual) for dates strictly before event_date."""
@@ -66,7 +65,8 @@ def compute_rolling_bias(
     if len(sub) < min_obs:
         return 0.0
     pairs = list(zip(sub["date"].astype(str), sub["residual"].astype(float)))
-    return ewma_bias(pairs, halflife_days)
+    raw_ewma = ewma_bias(pairs, halflife_days)
+    return float(np.clip(raw_ewma, -max_correction_f, max_correction_f))
 
 
 def write_snapshot(
@@ -117,6 +117,7 @@ class RollingBiasCache:
 
     halflife_days: int = 20
     min_obs: int = 5
+    max_correction_f: float = 1.5
     _rows: list[dict[str, float | str]] = field(default_factory=list)
 
     def seed_from_parquet(self, path: Path | None = None) -> None:
@@ -157,5 +158,6 @@ class RollingBiasCache:
             event_date,
             halflife_days=self.halflife_days,
             min_obs=self.min_obs,
+            max_correction_f=self.max_correction_f,
             residuals_df=df,
         )
