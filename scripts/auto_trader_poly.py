@@ -537,6 +537,25 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
         append_trade_log(state, {"event": "init_abort", "reason": "no_markets"})
         return state
 
+    # Persist forecast metadata for settlement/residual computation
+    state["raw_forecasts"] = metadata.get("raw_forecasts", {})
+    state["forecasts_after_bias"] = metadata.get("forecasts", {})
+    state["rolling_bias_applied"] = metadata.get("rolling_bias_applied", {})
+    state["wunderground_bias_applied"] = metadata.get("bias_applied", {})
+    if metadata.get("ngboost_sigmas"):
+        state["ngboost_sigmas"] = metadata["ngboost_sigmas"]
+
+    signal = metadata.get("poly_config", {}).get("signal", "track_b_flat")
+    state["signal"] = signal
+    if signal == "ngboost":
+        state["wu_adjusted_forecasts"] = metadata.get("raw_forecasts", {})
+    else:
+        wu_adjusted_forecasts = {}
+        for city, forecast_val in metadata.get("forecasts", {}).items():
+            rolling = metadata.get("rolling_bias_applied", {}).get(city, 0.0)
+            wu_adjusted_forecasts[city] = int(round(float(forecast_val) + float(rolling)))
+        state["wu_adjusted_forecasts"] = wu_adjusted_forecasts
+
     print(f"  Selected: {len(sized_trades)} trades")
 
     positions: list[dict[str, Any]] = []

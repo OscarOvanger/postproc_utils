@@ -433,11 +433,13 @@ def fetch_market(
 
 def compute_edge(
     market_df: pd.DataFrame,
-    forecasts: dict[str, int],
+    forecasts: dict[str, float | int],
     city_config: dict[str, Any],
     config: dict[str, Any],
     market_reasons: dict[str, str],
     event_date: str,
+    *,
+    ngboost_sigmas: dict[str, float] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, str], dict[str, list[dict[str, Any]]]]:
     """Compute best tradeable bucket per city using Polymarket prices."""
     print("\n--- compute_edge ---")
@@ -471,8 +473,15 @@ def compute_edge(
             ]
         ].drop_duplicates("bucket_label")
         tmax_pred = forecasts[city]
-        sigma = float(city_config[city]["trackb_sigma_f"])
-        probs = bucket_probs_from_point_forecast(tmax_pred, sigma, buckets)
+        if ngboost_sigmas and city in ngboost_sigmas:
+            from src.ngboost_live_forecast import ngboost_bucket_probs
+
+            sigma_f = ngboost_sigmas[city]
+            labels = buckets["bucket_label"].astype(str).tolist()
+            probs = ngboost_bucket_probs(float(tmax_pred), sigma_f, labels)
+        else:
+            sigma_f = float(city_config.get(city, {}).get("trackb_sigma_f", 2.0))
+            probs = bucket_probs_from_point_forecast(tmax_pred, sigma_f, buckets)
 
         city_sanity: list[dict[str, Any]] = []
         best: dict[str, Any] | None = None
@@ -678,12 +687,16 @@ def size_positions_poly(
             }
         )
 
-    while sized:
-        total_cap = sum(t["capital_at_risk"] for t in sized)
-        if total_cap <= daily_cap:
-            break
-        dropped = sized.pop()
-        print(f"  Dropped {dropped['city']} (cap trim): edge={dropped['edge']:.3f}")
+    # Greedily add trades until daily cap is reached
+    trimmed: list[dict[str, Any]] = []
+    remaining_cap = daily_cap
+    for t in sized:
+        if t["capital_at_risk"] <= remaining_cap:
+            trimmed.append(t)
+            remaining_cap -= t["capital_at_risk"]
+        else:
+            print(f"  Dropped {t['city']} (cap trim): edge={t['edge']:.3f}")
+    sized = trimmed
 
     return sized
 
@@ -708,12 +721,39 @@ def prepare_poly_trades(
     Returns (sized_trades, metadata).
     """
     poly_config, city_config = build_poly_config(config_path)
-    wunderground_bias = load_wunderground_bias()
+    signal = poly_config.get("signal", "track_b_flat")
+    use_ngboost = signal == "ngboost"
 
     print("\n--- PHASE 1: Pre-fetch features ---")
-    forecasts, forecast_reasons, forecast_notes = fetch_forecast(
-        poly_config, event_date, city_config
-    )
+    forecast_reasons: dict[str, str] = {}
+    forecast_notes: dict[str, str] = {}
+    sigmas: dict[str, float] = {}
+
+    if use_ngboost:
+        from src.ngboost_live_forecast import NgBoostLiveModels, predict_ngboost
+
+        ngboost_dir = PROJECT_ROOT / poly_config.get("model_dir", "models/ngboost_v2")
+        ngboost_models = NgBoostLiveModels(ngboost_dir)
+        forecasts: dict[str, float] = {}
+
+        for city in poly_config["cities"]:
+            print(f"\n  {city}")
+            result = predict_ngboost(ngboost_models, city, event_date)
+            if result is None:
+                forecast_reasons[city] = "ngboost_unavailable"
+                continue
+            mu, sigma = result
+            forecasts[city] = mu
+            sigmas[city] = sigma
+            forecast_notes[city] = f"NGBoost mu={mu:.1f} sigma={sigma:.2f}"
+            print(f"    {forecast_notes[city]}")
+    else:
+        wunderground_bias = load_wunderground_bias()
+        int_forecasts, forecast_reasons, forecast_notes = fetch_forecast(
+            poly_config, event_date, city_config
+        )
+        forecasts = {city: float(pred) for city, pred in int_forecasts.items()}
+
     n_forecasts = len(forecasts)
     print(f"\nFeature coverage: {n_forecasts}/{len(poly_config['cities'])} cities")
 
@@ -741,29 +781,53 @@ def prepare_poly_trades(
         metadata["all_reasons"] = dict(forecast_reasons)
         return [], metadata
 
-    for city, pred in sorted(forecasts.items()):
-        note = forecast_notes.get(city, "")
-        if note:
-            print(f"  {city}: {pred}F ({note})")
-    for city, reason in sorted(forecast_reasons.items()):
-        print(f"  {city}: SKIP ({reason})")
+    if not use_ngboost:
+        for city, pred in sorted(forecasts.items()):
+            note = forecast_notes.get(city, "")
+            if note:
+                print(f"  {city}: {pred}F ({note})")
+        for city, reason in sorted(forecast_reasons.items()):
+            print(f"  {city}: SKIP ({reason})")
 
-    print("\n--- Wunderground bias adjustment ---")
-    raw_forecasts, forecasts, bias_applied = apply_wunderground_bias(
-        forecasts, wunderground_bias
-    )
-    metadata["forecasts"] = forecasts
-    metadata["raw_forecasts"] = raw_forecasts
-    metadata["bias_applied"] = bias_applied
+        print("\n--- Wunderground bias adjustment ---")
+        raw_forecasts, adjusted, bias_applied = apply_wunderground_bias(
+            {city: int(round(val)) for city, val in forecasts.items()},
+            wunderground_bias,
+        )
+        forecasts = {city: float(val) for city, val in adjusted.items()}
+        metadata["raw_forecasts"] = {city: float(val) for city, val in raw_forecasts.items()}
+        metadata["bias_applied"] = bias_applied
+    else:
+        raw_forecasts = dict(forecasts)
+        bias_applied = {city: 0.0 for city in forecasts}
+        metadata["raw_forecasts"] = raw_forecasts
+        metadata["bias_applied"] = bias_applied
+        metadata["ngboost_sigmas"] = sigmas
+        for city, reason in sorted(forecast_reasons.items()):
+            print(f"  {city}: SKIP ({reason})")
 
     halflife = int(poly_config.get("rolling_bias_halflife_days", 20))
+    max_corr = float(poly_config.get("max_rolling_correction_f", 1.5))
     rolling_applied: dict[str, float] = {}
     print("\n--- Rolling bias correction ---")
     for city in list(forecasts.keys()):
-        rolling = compute_rolling_bias(city, event_date, halflife)
-        forecasts[city] = int(round(forecasts[city] - rolling))
+        rolling = compute_rolling_bias(
+            city, event_date, halflife, max_correction_f=max_corr
+        )
+        if use_ngboost:
+            raw_mu = raw_forecasts[city]
+            forecasts[city] = raw_mu - rolling
+            print(
+                f"  {city}: mu={raw_mu:.1f} -> {forecasts[city]:.1f} "
+                f"(rolling={rolling:+.2f})"
+            )
+        else:
+            forecasts[city] = float(int(round(forecasts[city] - rolling)))
+            print(
+                f"  {city}: rolling bias correction {rolling:+.2f}F → "
+                f"{int(forecasts[city])}F"
+            )
         rolling_applied[city] = rolling
-        print(f"  {city}: rolling bias correction {rolling:+.2f}F → {forecasts[city]}F")
     metadata["rolling_bias_applied"] = rolling_applied
     metadata["forecasts"] = forecasts
 
@@ -792,6 +856,7 @@ def prepare_poly_trades(
         poly_config,
         all_reasons,
         event_date,
+        ngboost_sigmas=metadata.get("ngboost_sigmas"),
     )
     all_reasons.update(edge_reasons)
     metadata["edges"] = edges
