@@ -1,4 +1,5 @@
 import math
+from datetime import date as date_cls
 
 import numpy as np
 from scipy.optimize import minimize
@@ -106,6 +107,25 @@ def effective_probability(
 ) -> float:
     """Blend model probability toward market price before edge/sizing decisions."""
     return shrinkage_lambda * model_prob + (1.0 - shrinkage_lambda) * market_price
+
+
+def seasonal_shrinkage_lambda(config: dict, event_date: str) -> float:
+    """Return shrinkage lambda for the event date.
+
+    Uses config keys: shrinkage_lambda (base, default 1.0),
+    shrinkage_lambda_summer (optional), summer_months (list of ints, default [6, 7, 8]).
+    event_date is 'YYYY-MM-DD'.
+    """
+    month = date_cls.fromisoformat(event_date).month
+    base = float(config.get("shrinkage_lambda", 1.0))
+    summer_months = list(config.get("summer_months", [6, 7, 8]))
+    summer_lam = config.get("shrinkage_lambda_summer")
+    if month in summer_months and summer_lam is not None:
+        lam = float(summer_lam)
+    else:
+        lam = base
+    assert 0.0 < lam <= 1.0, f"shrinkage lambda out of range: {lam}"
+    return lam
 
 
 def daily_cap_from_bankroll(bankroll: float, config: dict) -> float:

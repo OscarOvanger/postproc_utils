@@ -41,7 +41,12 @@ from src.polymarket_api import (  # noqa: E402
     parse_bucket_label,
 )
 from src.rolling_bias import compute_rolling_bias  # noqa: E402
-from src.sizing import daily_cap_from_bankroll, effective_probability, has_edge  # noqa: E402
+from src.sizing import (  # noqa: E402
+    daily_cap_from_bankroll,
+    effective_probability,
+    has_edge,
+    seasonal_shrinkage_lambda,
+)
 
 BIAS_PATH = PROJECT_ROOT / "data" / "polymarket" / "wunderground_bias.json"
 WEATHER_TAG_ID = "104596"
@@ -448,6 +453,15 @@ def compute_edge(
     sanity_rows: dict[str, list[dict[str, Any]]] = {}
     price_floor = POLY_PRICE_FLOOR
     edge_threshold = float(config["edge_threshold"])
+    shrinkage_lambda = seasonal_shrinkage_lambda(config, event_date)
+    summer_months = list(config.get("summer_months", [6, 7, 8]))
+    month = int(event_date[5:7])
+    season = "summer" if month in summer_months else "base"
+    print(f"shrinkage lambda for {event_date}: {shrinkage_lambda:.2f} ({season})")
+    from backtest.ngboost_inference import describe_two_piece_mode, two_piece_ratio_for_date  # noqa: WPS433
+
+    print(describe_two_piece_mode(config))
+    two_piece_ratio = two_piece_ratio_for_date(config, event_date)
 
     for city in config["cities"]:
         if city in reasons:
@@ -478,14 +492,13 @@ def compute_edge(
 
             sigma_f = ngboost_sigmas[city]
             labels = buckets["bucket_label"].astype(str).tolist()
-            probs = ngboost_bucket_probs(float(tmax_pred), sigma_f, labels)
+            probs = ngboost_bucket_probs(float(tmax_pred), sigma_f, labels, ratio_down=two_piece_ratio)
         else:
             sigma_f = float(city_config.get(city, {}).get("trackb_sigma_f", 2.0))
             probs = bucket_probs_from_point_forecast(tmax_pred, sigma_f, buckets)
 
         city_sanity: list[dict[str, Any]] = []
         best: dict[str, Any] | None = None
-        shrinkage_lambda = float(config.get("shrinkage_lambda", 1.0))
 
         for bucket_label, model_prob in probs.items():
             entry_rows = day_df[day_df["bucket_label"].astype(str).eq(str(bucket_label))]
@@ -644,19 +657,42 @@ def select_trades_poly(
     """Apply edge_threshold selection and rank by edge (no OOS exclusions)."""
     print("\n--- select_trades ---")
     threshold = float(config["edge_threshold"])
+    max_trades = int(config.get("max_trades_per_day", 2))
+    pace_fallback_enabled = bool(config.get("pace_fallback_enabled", False))
+    pace_fallback_min_edge = float(config.get("pace_fallback_min_edge", 0.010))
+    pace_fallback_target = int(config.get("pace_fallback_target_trades", 2))
+
+    ranked = sorted(edges, key=lambda row: row["edge"], reverse=True)
     selected: list[dict[str, Any]] = []
 
-    for edge_row in sorted(edges, key=lambda row: row["edge"], reverse=True):
-        city = edge_row["city"]
+    for edge_row in ranked:
         if edge_row["edge"] < threshold:
-            reasons[city] = (
-                f"edge below threshold ({edge_row['edge']:.3f} < {threshold:.3f})"
-            )
+            city = edge_row["city"]
+            if city not in reasons or "edge below threshold" not in reasons.get(city, ""):
+                reasons[city] = (
+                    f"edge below threshold ({edge_row['edge']:.3f} < {threshold:.3f})"
+                )
             continue
-        selected.append(edge_row)
+        selected.append({**edge_row, "entry_mode": "primary"})
+        if len(selected) >= max_trades:
+            break
 
-    max_trades = int(config.get("max_trades_per_day", 2))
-    selected = selected[:max_trades]
+    if pace_fallback_enabled and len(selected) < pace_fallback_target:
+        taken_cities = {row["city"] for row in selected}
+        for edge_row in ranked:
+            if len(selected) >= pace_fallback_target:
+                break
+            city = edge_row["city"]
+            if city in taken_cities:
+                continue
+            if edge_row["edge"] <= pace_fallback_min_edge:
+                continue
+            selected.append({**edge_row, "entry_mode": "fallback"})
+            taken_cities.add(city)
+
+    if not pace_fallback_enabled:
+        for row in selected:
+            row.setdefault("entry_mode", "primary")
 
     return selected, reasons
 
@@ -668,15 +704,14 @@ def size_positions_poly(
 ) -> list[dict[str, Any]]:
     """Apply flat sizing and daily loss cap with Polymarket fee model."""
     print("\n--- size_positions ---")
-    n_default = int(config["n_contracts_default"])
-    n_reduced = int(config["n_contracts_reduced"])
-    threshold = float(config["bankroll_reduction_threshold"])
+    n_contracts = int(config["n_contracts_default"])
+    assert n_contracts == 5, f"Polymarket minimum order size is 5 contracts, got {n_contracts}"
     daily_cap = daily_cap_from_bankroll(bankroll, config)
-    n_contracts = n_reduced if bankroll < threshold else n_default
 
     sized: list[dict[str, Any]] = []
     for trade in trades:
         maker_price = float(trade.get("maker_entry_price") or trade["market_price"])
+        assert n_contracts == 5
         sized.append(
             {
                 **trade,
@@ -703,7 +738,8 @@ def size_positions_poly(
 
 def build_poly_config(config_path: Path | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     config = load_deploy_config(config_path or DEFAULT_CONFIG_PATH)
-    poly_config = {**config, "cities": list(POLYMARKET_CITIES)}
+    cities = config.get("cities") or list(POLYMARKET_CITIES)
+    poly_config = {**config, "cities": list(cities)}
     city_config = load_city_config(poly_config)
     return poly_config, city_config
 
@@ -730,7 +766,12 @@ def prepare_poly_trades(
     sigmas: dict[str, float] = {}
 
     if use_ngboost:
-        from src.ngboost_live_forecast import NgBoostLiveModels, predict_ngboost
+        import backtest.common as bc  # noqa: E402
+        from src.ngboost_live_forecast import (  # noqa: E402
+            NgBoostLiveModels,
+            build_live_features,
+            predict_ngboost_from_features,
+        )
 
         ngboost_dir = PROJECT_ROOT / poly_config.get("model_dir", "models/ngboost_v2")
         ngboost_models = NgBoostLiveModels(ngboost_dir)
@@ -738,11 +779,16 @@ def prepare_poly_trades(
 
         for city in poly_config["cities"]:
             print(f"\n  {city}")
-            result = predict_ngboost(ngboost_models, city, event_date)
-            if result is None:
+            feat_df = build_live_features(city, event_date)
+            if feat_df is None:
                 forecast_reasons[city] = "ngboost_unavailable"
                 continue
-            mu, sigma = result
+            cloud_norm = bc.normalize_peak_cloud_cover(float(feat_df.iloc[0]["peak_cloud_cover"]))
+            if bc.convective_skip(city, event_date, cloud_norm, poly_config):
+                forecast_reasons[city] = f"convective_skip cloud={cloud_norm:.3f}"
+                print(f"    SKIP ({forecast_reasons[city]})")
+                continue
+            mu, sigma = predict_ngboost_from_features(ngboost_models, feat_df)
             forecasts[city] = mu
             sigmas[city] = sigma
             forecast_notes[city] = f"NGBoost mu={mu:.1f} sigma={sigma:.2f}"

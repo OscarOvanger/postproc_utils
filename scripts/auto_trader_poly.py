@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import os
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -26,16 +27,22 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from src.poly_trading_pipeline import (  # noqa: E402
-    POLYMARKET_CITIES,
+    DEFAULT_CONFIG_PATH,
+    build_poly_config,
     compute_maker_entry_price,
     fetch_market,
     poly_taker_fee,
     prepare_poly_trades,
 )
-from src.polymarket_api import fetch_order_book_http  # noqa: E402
+from src.polymarket_api import (  # noqa: E402
+    CLOB_HOST,
+    PolymarketClient,
+    fetch_order_book_http,
+)
 
 CT = ZoneInfo("America/Chicago")
 STATE_DIR = PROJECT_ROOT / "logs"
+BANKROLL_FILE = STATE_DIR / "current_bankroll.txt"
 POLY_PAPER_LOG = STATE_DIR / "poly_paper_trades.jsonl"
 PROFIT_TARGET = 0.15
 ENTRY_TIMEOUT_MIN = 60
@@ -80,6 +87,82 @@ def send_pushover(title: str, message: str) -> None:
         urllib.request.urlopen(req, timeout=10)
     except Exception as exc:
         print(f"  Pushover failed: {exc}")
+
+
+def git_freeze_hash() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=PROJECT_ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
+def load_deploy_cities() -> list[str]:
+    poly_config, _ = build_poly_config(DEFAULT_CONFIG_PATH)
+    return list(poly_config.get("cities", []))
+
+
+def read_bankroll_file() -> float | None:
+    if not BANKROLL_FILE.exists():
+        return None
+    try:
+        return float(BANKROLL_FILE.read_text().strip())
+    except ValueError:
+        return None
+
+
+def emit_config_echo(mode: str, bankroll: float) -> str:
+    poly_config, _ = build_poly_config(DEFAULT_CONFIG_PATH)
+    cities = poly_config.get("cities", [])
+    lines = [
+        "CONFIG ECHO (frozen D3)",
+        f"  commit={git_freeze_hash()}",
+        f"  mode={mode}",
+        f"  bankroll=${bankroll:.2f}",
+        f"  signal={poly_config.get('signal')}",
+        f"  shrinkage_lambda={poly_config.get('shrinkage_lambda')}",
+        f"  convective_cloud_skip_threshold={poly_config.get('convective_cloud_skip_threshold')}",
+        f"  cities={len(cities)}: {', '.join(cities)}",
+        f"  pace_fallback_enabled={poly_config.get('pace_fallback_enabled')}",
+        f"  budget_divisor={poly_config.get('budget_divisor')}",
+        f"  edge_threshold={poly_config.get('edge_threshold')}",
+        f"  max_trades_per_day={poly_config.get('max_trades_per_day')}",
+    ]
+    message = "\n".join(lines)
+    print(message)
+    return message
+
+
+def run_preflight(mode: str) -> bool:
+    """Verify CLOB reachability and auth before live order placement."""
+    print("\n--- PREFLIGHT ---")
+    try:
+        import requests
+
+        resp = requests.get(f"{CLOB_HOST}/", timeout=10)
+        resp.raise_for_status()
+        print(f"  CLOB reachable ({resp.status_code})")
+    except Exception as exc:
+        print(f"  PREFLIGHT FAIL: CLOB unreachable: {exc}")
+        send_pushover("Autotrader preflight failed", f"CLOB unreachable: {exc}")
+        return False
+
+    if mode != "live":
+        print("  Auth check skipped (paper mode)")
+        return True
+
+    try:
+        PolymarketClient().get_balance()
+        print("  CLOB auth OK")
+        return True
+    except Exception as exc:
+        print(f"  PREFLIGHT FAIL: CLOB auth error: {exc}")
+        send_pushover("Autotrader preflight failed", f"CLOB auth error: {exc}")
+        return False
 
 
 def state_path(date_str: str) -> Path:
@@ -305,6 +388,7 @@ def select_modal_trades(event_date: str) -> list[dict[str, Any]]:
                 "capital_at_risk": round(N_CONTRACTS * maker_entry_price, 4),
             }
         )
+        assert N_CONTRACTS == 5
 
     eligible.sort(key=lambda trade: trade["maker_entry_price"])
     selected: list[dict[str, Any]] = []
@@ -403,6 +487,9 @@ def initialize_day_modal_maker(state: dict[str, Any]) -> dict[str, Any]:
     print(f"\n--- PHASE 4-5: place entry and exit orders ---")
     positions: list[dict[str, Any]] = []
     for trade in sized_trades:
+        assert int(trade["n_contracts"]) == 5, (
+            f"Polymarket minimum order size is 5 contracts, got {trade['n_contracts']}"
+        )
         pos: dict[str, Any] = {
             "city": trade["city"],
             "bucket_label": trade["bucket_label"],
@@ -560,6 +647,9 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
 
     positions: list[dict[str, Any]] = []
     for trade in sized_trades:
+        assert int(trade["n_contracts"]) == 5, (
+            f"Polymarket minimum order size is 5 contracts, got {trade['n_contracts']}"
+        )
         pos = {
             "city": trade["city"],
             "bucket_label": trade["bucket_label"],
@@ -567,6 +657,7 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
             "condition_id": trade.get("condition_id"),
             "model_prob": trade["model_prob"],
             "edge": trade["edge"],
+            "entry_mode": trade.get("entry_mode", "primary"),
             "n_contracts": trade["n_contracts"],
             "maker_entry_price": trade["maker_entry_price"],
             "best_bid_at_entry": trade.get("best_bid"),
@@ -628,6 +719,7 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
                 "bucket_label": trade["bucket_label"],
                 "status": pos["status"],
                 "maker_entry_price": pos["maker_entry_price"],
+                "entry_mode": pos.get("entry_mode", "primary"),
             },
         )
 
@@ -651,7 +743,7 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
         f"Auto-trader: {len(positions)} entries ({state['mode']})",
         "\n".join(
             f"{p['city']} {p['bucket_label']} @ ${p['maker_entry_price']:.2f} "
-            f"edge={p['edge']:+.3f} [{p['status']}]"
+            f"edge={p['edge']:+.3f} mode={p.get('entry_mode', 'primary')} [{p['status']}]"
             for p in positions
         ),
     )
@@ -1203,14 +1295,25 @@ def main() -> None:
     parser.add_argument("--mode", default="paper", choices=["paper", "live"])
     parser.add_argument("--strategy", default="trackb", choices=["trackb", "modal_maker"])
     parser.add_argument("--date", default=None)
-    parser.add_argument("--bankroll", type=float, default=100.0)
+    parser.add_argument("--bankroll", type=float, default=None)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Skip entry-time wait (for dry-run testing)",
+    )
     args = parser.parse_args()
 
     now = datetime.now(CT)
     date_str = args.date or now.strftime("%Y-%m-%d")
+    bankroll = args.bankroll
+    if bankroll is None:
+        bankroll = read_bankroll_file()
+    if bankroll is None:
+        bankroll = 100.0
+        print(f"  WARNING: no bankroll file; defaulting to ${bankroll:.2f}")
     print(
         f"[{now.strftime('%Y-%m-%d %H:%M:%S')} CT] "
-        f"auto_trader_poly ({args.mode}, {args.strategy})"
+        f"auto_trader_poly ({args.mode}, {args.strategy}) bankroll=${bankroll:.2f}"
     )
 
     state = load_state(date_str)
@@ -1218,12 +1321,12 @@ def main() -> None:
         cities = (
             list(MODAL_MAKER_CITIES)
             if args.strategy == "modal_maker"
-            else list(POLYMARKET_CITIES)
+            else load_deploy_cities()
         )
         state = {
             "date": date_str,
             "mode": args.mode,
-            "bankroll": args.bankroll,
+            "bankroll": bankroll,
             "phase": "uninitialized",
             "entry_time": None,
             "positions": [],
@@ -1247,13 +1350,23 @@ def main() -> None:
     current_minute = now.minute
 
     if state["phase"] == "uninitialized":
-        if current_hour < ENTRY_HOUR or (
-            current_hour == ENTRY_HOUR and current_minute < ENTRY_MINUTE
+        if not args.force and (
+            current_hour < ENTRY_HOUR
+            or (current_hour == ENTRY_HOUR and current_minute < ENTRY_MINUTE)
         ):
             print(
                 f"  [{now.strftime('%H:%M')}] Waiting for "
                 f"{ENTRY_HOUR}:{ENTRY_MINUTE:02d} CT"
             )
+            save_state(state)
+            return
+
+        config_message = emit_config_echo(state["mode"], float(state["bankroll"]))
+        send_pushover(f"Autotrader config ({date_str})", config_message)
+        if not run_preflight(state["mode"]):
+            state["phase"] = "monitoring"
+            state["entry_time"] = now.strftime("%H:%M:%S")
+            append_trade_log(state, {"event": "init_abort", "reason": "preflight_failed"})
             save_state(state)
             return
 

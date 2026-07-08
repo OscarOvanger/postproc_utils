@@ -615,7 +615,8 @@ def print_report(
     end_bankroll: float,
     quality: dict[str, Any],
 ) -> None:
-    n_contracts = 5 if start_bankroll >= 85 else 3
+    n_contracts = 5
+    assert n_contracts == 5
     print("=== Telonex Retroactive Validation (Jul 1-3) ===")
     print(f"Bankroll: ${start_bankroll:.2f} | Strategy: v5b | Sizing: flat {n_contracts}")
     print()

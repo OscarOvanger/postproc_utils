@@ -1,0 +1,23 @@
+date,city,bucket,entry,pnl,won
+2026-06-26,Austin,94-95°F,0.59,2.05,True
+2026-06-26,Dallas,94-95°F,0.45,2.75,True
+2026-06-26,Chicago,68-69°F,0.42,-2.1,False
+2026-06-26,San Francisco,66-67°F,0.47,-2.35,False
+2026-06-26,Seattle,64-65°F,0.39,3.05,True
+2026-06-26,New York,84-85°F,0.44,-2.2,False
+2026-06-27,San Francisco,66-67°F,0.4,3.0,True
+2026-06-27,New York,80-81°F,0.31,-1.55,False
+2026-06-27,Seattle,66-67°F,0.43,-2.15,False
+2026-06-27,Dallas,96-97°F,0.48,2.6,True
+2026-06-27,Seattle,66-67°F,0.47,-2.35,False
+2026-06-29,Seattle,66-67°F,0.43,-2.15,False
+2026-06-29,New York,86-87°F,0.53,2.35,True
+2026-06-29,San Francisco,74-75°F,0.373,-1.865,False
+2026-07-01,Seattle,66-67°F,0.58,-2.9,False
+2026-07-01,San Francisco,68-69°F,0.43,-2.2113,False
+2026-07-01,New York,94-95°F,0.36,-1.8,False
+2026-07-02,Atlanta,96-97°F,0.41,-2.05,False
+2026-07-02,San Francisco,68-69°F,0.24,-1.2,False
+2026-07-02,Austin,96-97°F,0.54,-2.7,False
+2026-07-06,Los Angeles,72-73°F,0.17,-0.85,False
+2026-07-06,San Francisco,64-65°F,0.16,-0.8,False

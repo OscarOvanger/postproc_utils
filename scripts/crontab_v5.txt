@@ -1,19 +1,23 @@
 # Polymarket v5 autotrader crontab
 # Install: crontab /Users/oscaro/Desktop/MCP_Project/scripts/crontab_v5.txt
-# Or paste into: crontab -e
 #
 # Assumes Mac system clock is US Central (America/Chicago).
 # Pushover credentials are loaded from .env inside cron_autotrader.sh.
-# Schedule 10-22 matches auto_trader_poly MONITOR_END_HOUR=22.
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin
 
 # Paper mode (enable for testing)
-# */5 10-22 * * * /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh paper
+# */5 10-22 * * * /bin/bash /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh paper >> /Users/oscaro/Desktop/MCP_Project/logs/cron_stdout.log 2>> /Users/oscaro/Desktop/MCP_Project/logs/cron_stderr.log
 
-# Live mode (uncomment for production — e.g. Monday Jul 6)
-*/5 10-22 * * * /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh live
+# Live mode (production)
+*/5 10-22 * * * /bin/bash /Users/oscaro/Desktop/MCP_Project/scripts/cron_autotrader.sh live >> /Users/oscaro/Desktop/MCP_Project/logs/cron_stdout.log 2>> /Users/oscaro/Desktop/MCP_Project/logs/cron_stderr.log
 
 # Polymarket daily settlement — settles yesterday's trades at 8 AM CT
-0 8 * * * /bin/bash -c 'cd /Users/oscaro/Desktop/MCP_Project && .venv/bin/python scripts/settle_daily_poly.py --date yesterday' >> /Users/oscaro/Desktop/MCP_Project/logs/cron_settle.log 2>&1
+0 8 * * * /bin/bash -c 'cd /Users/oscaro/Desktop/MCP_Project && .venv/bin/python scripts/settle_daily_poly.py --date yesterday' >> /Users/oscaro/Desktop/MCP_Project/logs/cron_settle.log 2>> /Users/oscaro/Desktop/MCP_Project/logs/cron_stderr.log
+
+# Settlement watchdog — alerts if 8 AM settle did not run
+20 8 * * * /bin/bash /Users/oscaro/Desktop/MCP_Project/scripts/watchdog.sh settle >> /Users/oscaro/Desktop/MCP_Project/logs/cron_watchdog.log 2>&1
+
+# Trade watchdog — alerts if no autotrader run by 10:25 CT
+25 10 * * * /bin/bash /Users/oscaro/Desktop/MCP_Project/scripts/watchdog.sh trader >> /Users/oscaro/Desktop/MCP_Project/logs/cron_watchdog.log 2>&1

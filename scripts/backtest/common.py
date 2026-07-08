@@ -406,6 +406,52 @@ def shrinkage_lambda(config: dict[str, Any] | None = None) -> float:
     return float(cfg.get("shrinkage_lambda", 1.0))
 
 
+# peak_cloud_cover in HRRR cache is stored as percent (0..100); houston 2026 audit max=100.0.
+def normalize_peak_cloud_cover(peak_cloud_cover: float) -> float:
+    val = float(peak_cloud_cover)
+    if val > 1.0:
+        val = val / 100.0
+    if not np.isfinite(val) or not (0.0 <= val <= 1.0):
+        raise AssertionError(f"peak_cloud_cover out of range after normalization: {peak_cloud_cover}")
+    return val
+
+
+_HRRR_FRAME_CACHE: dict[str, pd.DataFrame] = {}
+
+
+def peak_cloud_cover_for_day(city: str, event_date: str) -> float | None:
+    """Normalized peak_cloud_cover for one city-day, or None if HRRR row missing."""
+    if city not in _HRRR_FRAME_CACHE:
+        frame = ng.load_hrrr_city(city).copy()
+        frame["date"] = pd.to_datetime(frame["date"]).dt.strftime("%Y-%m-%d")
+        _HRRR_FRAME_CACHE[city] = frame
+    frame = _HRRR_FRAME_CACHE[city]
+    row = frame[frame["date"] == event_date]
+    if row.empty:
+        return None
+    return normalize_peak_cloud_cover(float(row.iloc[0]["peak_cloud_cover"]))
+
+
+def convective_skip(
+    city: str,
+    event_date: str,
+    cloud_cover: float | None,
+    config: dict,
+) -> bool:
+    """True if this city-day should be skipped due to convective cloud cover."""
+    threshold = config.get("convective_cloud_skip_threshold")
+    if threshold is None:
+        return False
+    month = int(event_date[5:7])
+    skip_months = list(config.get("convective_skip_months", [6, 7, 8]))
+    exempt = set(config.get("convective_skip_exempt_cities", []))
+    if month not in skip_months or city in exempt:
+        return False
+    if cloud_cover is None:
+        return True
+    return float(cloud_cover) >= float(threshold)
+
+
 def print_trackb_mapping_table() -> None:
     print("\n=== TrackB ↔ Polymarket city mapping ===")
     print(f"{'Polymarket':<16} {'TrackB':<18} {'Notes'}")

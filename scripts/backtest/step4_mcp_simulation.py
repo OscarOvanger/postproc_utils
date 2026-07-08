@@ -103,12 +103,8 @@ def simulate_variant(variant: str, config: dict, force: bool) -> None:
             if is_modal:
                 desired = 5
             elif is_flat:
-                threshold = float(config.get("bankroll_reduction_threshold", 85.0))
-                desired = (
-                    int(config.get("n_contracts_reduced", 3))
-                    if bankroll < threshold
-                    else int(config.get("n_contracts_default", 5))
-                )
+                desired = int(config.get("n_contracts_default", 5))
+                assert desired == 5, f"Polymarket minimum order size is 5 contracts, got {desired}"
             else:
                 desired = original_n
             fitted = fit_contracts(desired, entry_price, bankroll, daily_spent, day_cap)

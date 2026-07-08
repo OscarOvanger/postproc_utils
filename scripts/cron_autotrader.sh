@@ -4,6 +4,7 @@
 
 # Capture all stderr so cron failures are never silent.
 STDERR_LOG="/Users/oscaro/Desktop/MCP_Project/logs/cron_stderr.log"
+LOCKFILE="/Users/oscaro/Desktop/MCP_Project/logs/cron_autotrader.lock"
 mkdir -p "$(dirname "$STDERR_LOG")"
 exec 2>> "$STDERR_LOG"
 echo "=== $(date) === $0 $*" >> "$STDERR_LOG"
@@ -13,6 +14,12 @@ set -euo pipefail
 PROJECT_DIR="/Users/oscaro/Desktop/MCP_Project"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 cd "$PROJECT_DIR"
+
+exec 200>"$LOCKFILE"
+if ! flock -n 200; then
+    echo "previous run still active"
+    exit 0
+fi
 
 LOG="$PROJECT_DIR/logs/cron_autotrader_$(date +%Y-%m-%d).log"
 mkdir -p "$PROJECT_DIR/logs"

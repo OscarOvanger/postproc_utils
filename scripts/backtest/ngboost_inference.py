@@ -146,7 +146,63 @@ def build_backtest_features(city: str, event_date: str) -> pd.DataFrame | None:
     return pd.DataFrame([feat])
 
 
-def _cdf(mu: float, sigma: float, x: float, distribution: str, df_val: float | None) -> float:
+def _two_piece_cdf(mu: float, sigma: float, ratio: float, x: float) -> float:
+    """Two-piece normal CDF with mode mu, left scale r*sigma, right scale sigma."""
+    if ratio < 1.0:
+        raise ValueError(f"two_piece ratio must be >= 1, got {ratio}")
+    if ratio == 1.0:
+        return float(norm.cdf(x, loc=mu, scale=sigma))
+
+    s1 = ratio * sigma
+    s2 = sigma
+    denom = s1 + s2
+    w_left = 2.0 * s1 / denom
+    w_right = 2.0 * s2 / denom
+    mass_below_mu = s1 / denom
+
+    if x <= mu:
+        return w_left * float(norm.cdf((x - mu) / s1))
+    return mass_below_mu + w_right * (float(norm.cdf((x - mu) / s2)) - 0.5)
+
+
+def two_piece_ratio_for_date(config: dict[str, Any], event_date: str) -> float | None:
+    """Return configured down-side sigma ratio for summer months, else None."""
+    ratio = config.get("two_piece_sigma_down_ratio")
+    if ratio is None:
+        return None
+    months = config.get("two_piece_months", [6, 7, 8])
+    month = int(str(event_date)[5:7])
+    if month in months:
+        return float(ratio)
+    return None
+
+
+def describe_two_piece_mode(config: dict[str, Any]) -> str:
+    ratio = config.get("two_piece_sigma_down_ratio")
+    months = config.get("two_piece_months", [6, 7, 8])
+    if ratio is None:
+        return "bucket distribution: symmetric Gaussian"
+    return f"bucket distribution: two-piece Gaussian (ratio_down={ratio}, months={months})"
+
+
+def _cdf(
+    mu: float,
+    sigma: float,
+    x: float,
+    distribution: str,
+    df_val: float | None,
+    ratio_down: float | None = None,
+) -> float:
+    if distribution == "two_piece_gaussian":
+        if df_val is not None:
+            raise ValueError("two_piece_gaussian requires df_val=None")
+        if ratio_down is None:
+            raise ValueError("two_piece_gaussian requires ratio_down")
+        return _two_piece_cdf(mu, sigma, ratio_down, x)
+    if ratio_down is not None and ratio_down != 1.0:
+        if distribution == "student_t":
+            raise ValueError("two_piece ratio_down is not supported with student_t")
+        return _two_piece_cdf(mu, sigma, ratio_down, x)
     if distribution == "student_t" and df_val is not None:
         return float(student_t.cdf(x, df=df_val, loc=mu, scale=sigma))
     return float(norm.cdf(x, loc=mu, scale=sigma))
@@ -158,19 +214,23 @@ def market_bucket_probability(
     sigma: float,
     distribution: str = "gaussian",
     df_val: float | None = None,
+    ratio_down: float | None = None,
 ) -> float:
     """Probability mass for a Polymarket bucket label under the model distribution."""
     parsed = parse_snapshot_bucket(str(label))
     btype = parsed["type"]
     if btype == "LESS_THAN":
         upper = int(parsed["upper"])
-        return _cdf(mu, sigma, upper + 0.5, distribution, df_val)
+        return _cdf(mu, sigma, upper + 0.5, distribution, df_val, ratio_down)
     if btype == "GREATER_THAN":
         lower = int(parsed["lower"])
-        return 1.0 - _cdf(mu, sigma, lower - 0.5, distribution, df_val)
+        return 1.0 - _cdf(mu, sigma, lower - 0.5, distribution, df_val, ratio_down)
     if btype == "RANGE":
         lo, hi = int(parsed["lower"]), int(parsed["upper"])
-        return _cdf(mu, sigma, hi + 0.5, distribution, df_val) - _cdf(mu, sigma, lo - 0.5, distribution, df_val)
+        return (
+            _cdf(mu, sigma, hi + 0.5, distribution, df_val, ratio_down)
+            - _cdf(mu, sigma, lo - 0.5, distribution, df_val, ratio_down)
+        )
     return 0.0
 
 
@@ -202,6 +262,7 @@ def predict_bucket_probs_from_mu(
     event_date: str,
     bucket_labels: list[str],
     mu: float,
+    ratio_down: float | None = None,
 ) -> dict[str, float] | None:
     """Bucket probabilities using a supplied mu (e.g. bias-adjusted)."""
     mu_sigma = predict_mu_sigma(models, city, event_date)
@@ -221,7 +282,9 @@ def predict_bucket_probs_from_mu(
     df_f = float(df_vals[0]) if df_vals is not None else None
 
     probs = {
-        label: market_bucket_probability(label, mu, sigma_f, models.distribution, df_f)
+        label: market_bucket_probability(
+            label, mu, sigma_f, models.distribution, df_f, ratio_down=ratio_down
+        )
         for label in bucket_labels
     }
     total = sum(probs.values())
@@ -235,6 +298,7 @@ def predict_bucket_probs(
     city: str,
     event_date: str,
     bucket_labels: list[str],
+    ratio_down: float | None = None,
 ) -> dict[str, float] | None:
     mu_sigma = predict_mu_sigma(models, city, event_date)
     if mu_sigma is None:
@@ -253,7 +317,9 @@ def predict_bucket_probs(
     df_f = float(df_vals[0]) if df_vals is not None else None
 
     probs = {
-        label: market_bucket_probability(label, mu_f, sigma_f, models.distribution, df_f)
+        label: market_bucket_probability(
+            label, mu_f, sigma_f, models.distribution, df_f, ratio_down=ratio_down
+        )
         for label in bucket_labels
     }
     total = sum(probs.values())

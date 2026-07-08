@@ -21,13 +21,16 @@ if str(SRC_DIR) not in sys.path:
 import backtest.common as bc  # noqa: E402
 from backtest.ngboost_inference import (  # noqa: E402
     NgBoostBacktestModels,
+    describe_two_piece_mode,
     parse_snapshot_bucket,
     predict_bucket_probs_from_mu,
     predict_mu_sigma,
+    two_piece_ratio_for_date,
 )
 from ngboost_kelly import BetCandidate, allocate_ngboost_kelly  # noqa: E402
 from rolling_bias import RollingBiasCache  # noqa: E402
 from poly_trading_pipeline import basket_companion_label, load_wunderground_bias  # noqa: E402
+from sizing import seasonal_shrinkage_lambda  # noqa: E402
 
 EXIT_VARIANTS = ["hold_to_settlement", "profit_target_15c"]
 PROFIT_TARGET_MIN_ENTRY = 0.55
@@ -70,17 +73,31 @@ def collect_day_bets(
     *,
     disable_rolling_bias: bool = False,
     disable_basket: bool = False,
-) -> tuple[list[BetCandidate], dict[str, float]]:
-    lam = bc.shrinkage_lambda(config)
+) -> tuple[list[BetCandidate], dict[str, float], dict[str, str]]:
+    if day_rows.empty:
+        return [], {}, {}
+    date_str = str(day_rows.iloc[0]["date"])
+    lam = seasonal_shrinkage_lambda(config, date_str)
+    ratio_down = two_piece_ratio_for_date(config, date_str)
     margin = float(config.get("basket_boundary_margin_f", 1.0))
     if disable_basket:
         margin = 0.0
     candidates: list[BetCandidate] = []
     raw_mu_by_city: dict[str, float] = {}
+    skip_reasons: dict[str, str] = {}
 
     for _, row in day_rows.iterrows():
         city = str(row["city"])
         date_str = str(row["date"])
+        if not bc.features_eligible_cached(city, date_str):
+            continue
+        cloud_cover = bc.peak_cloud_cover_for_day(city, date_str)
+        if bc.convective_skip(city, date_str, cloud_cover, config):
+            if cloud_cover is None:
+                skip_reasons[city] = "convective_skip (missing cloud cover)"
+            else:
+                skip_reasons[city] = f"convective_skip cloud={cloud_cover:.3f}"
+            continue
         frame = bc.load_day_snapshot(city, date_str)
         if frame is None:
             continue
@@ -106,7 +123,9 @@ def collect_day_bets(
         mu_wu = mu - static_bias
         bias = 0.0 if disable_rolling_bias else bias_cache.bias(city, date_str)
         mu_adj = mu_wu - bias
-        probs = predict_bucket_probs_from_mu(models, city, date_str, bucket_labels, mu_adj)
+        probs = predict_bucket_probs_from_mu(
+            models, city, date_str, bucket_labels, mu_adj, ratio_down=ratio_down
+        )
         if not probs:
             continue
 
@@ -151,7 +170,7 @@ def collect_day_bets(
                 candidates.append(cand)
                 break
 
-    return candidates, raw_mu_by_city
+    return candidates, raw_mu_by_city, skip_reasons
 
 
 def record_day_residuals(
@@ -185,11 +204,10 @@ def filter_top_bets(
     return filtered[: bc.max_trades_per_day(config)]
 
 
-def flat_contracts(bankroll: float, config: dict) -> int:
-    threshold = float(config.get("bankroll_reduction_threshold", 85.0))
-    n_default = int(config.get("n_contracts_default", 5))
-    n_reduced = int(config.get("n_contracts_reduced", 3))
-    return n_reduced if bankroll < threshold else n_default
+def flat_contracts(bankroll: float, config: dict) -> int:  # noqa: ARG001
+    n_contracts = int(config.get("n_contracts_default", 5))
+    assert n_contracts == 5, f"Polymarket minimum order size is 5 contracts, got {n_contracts}"
+    return n_contracts
 
 
 def settle_trade(
@@ -262,7 +280,7 @@ def run_kelly_variant(
 
         day_rows = eligible[eligible["date"] == date_str]
         budget = bc.daily_budget_ngboost(bankroll, config)
-        day_bets, raw_mu = collect_day_bets(
+        day_bets, raw_mu, _skip_reasons = collect_day_bets(
             day_rows,
             models,
             config,
@@ -389,7 +407,7 @@ def run_flat_variant(
 
         day_rows = eligible[eligible["date"] == date_str]
         budget = bc.daily_budget_ngboost(bankroll, config)
-        day_bets, raw_mu = collect_day_bets(
+        day_bets, raw_mu, _skip_reasons = collect_day_bets(
             day_rows,
             models,
             config,
@@ -409,6 +427,7 @@ def run_flat_variant(
             continue
 
         n_contracts = flat_contracts(bankroll, config)
+        assert n_contracts == 5
         day_pnl = 0.0
         day_spent = 0.0
         for bet in bets:
@@ -501,6 +520,7 @@ def main() -> None:
         )
 
     config = bc.load_trading_config()
+    print(describe_two_piece_mode(config))
     wu_bias = load_wunderground_bias()
     bias_kwargs = {
         "disable_rolling_bias": args.disable_rolling_bias,

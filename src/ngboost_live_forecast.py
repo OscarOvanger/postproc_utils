@@ -269,16 +269,11 @@ def build_live_features(city: str, event_date: str) -> pd.DataFrame | None:
     return pd.DataFrame([feat])
 
 
-def predict_ngboost(
+def predict_ngboost_from_features(
     models: NgBoostLiveModels,
-    city: str,
-    event_date: str,
-) -> tuple[float, float] | None:
-    """Return calibrated (mu, sigma) for one city-date using live data."""
-    feat_df = build_live_features(city, event_date)
-    if feat_df is None:
-        return None
-
+    feat_df: pd.DataFrame,
+) -> tuple[float, float]:
+    """Return calibrated (mu, sigma) from a pre-built feature row."""
     feat_df = ng.apply_saved_median_fill(
         feat_df, models.fill_medians, list(models.fill_medians.keys())
     )
@@ -295,18 +290,33 @@ def predict_ngboost(
     return mu_f, sigma_f
 
 
+def predict_ngboost(
+    models: NgBoostLiveModels,
+    city: str,
+    event_date: str,
+) -> tuple[float, float] | None:
+    """Return calibrated (mu, sigma) for one city-date using live data."""
+    feat_df = build_live_features(city, event_date)
+    if feat_df is None:
+        return None
+    return predict_ngboost_from_features(models, feat_df)
+
+
 def ngboost_bucket_probs(
     mu: float,
     sigma: float,
     bucket_labels: list[str],
+    ratio_down: float | None = None,
 ) -> dict[str, float]:
-    """Bucket probabilities from NGBoost (mu, sigma) using Gaussian CDF."""
+    """Bucket probabilities from NGBoost (mu, sigma) using Gaussian or two-piece CDF."""
     from backtest.ngboost_inference import market_bucket_probability  # noqa: WPS433
 
     probs: dict[str, float] = {}
     for label in bucket_labels:
         try:
-            probs[label] = market_bucket_probability(label, mu, sigma, "gaussian", None)
+            probs[label] = market_bucket_probability(
+                label, mu, sigma, "gaussian", None, ratio_down=ratio_down
+            )
         except ValueError:
             continue
 
