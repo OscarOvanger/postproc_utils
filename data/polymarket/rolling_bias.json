@@ -40,9 +40,9 @@
     "as_of_date": "2026-06-30"
   },
   "san_francisco": {
-    "ewma": -0.9161,
-    "n_obs": 1998,
-    "as_of_date": "2026-06-30"
+    "ewma": -1.0722,
+    "n_obs": 1999,
+    "as_of_date": "2026-07-02"
   },
   "seattle": {
     "ewma": -0.296,
