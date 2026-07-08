@@ -41,6 +41,7 @@ build/
 
 # Quarto render output (keep the .qmd source, not the rendered artefacts)
 reports/*.pdf
+!reports/frozen_strategy_report.pdf
 reports/_files/
 _freeze/
 .quarto/
@@ -96,11 +97,13 @@ data/track_j/
 # Research reports and strategy documentation
 reports/**
 !reports/research_log.qmd
+!reports/frozen_strategy_report.pdf
 !reports/mcp_simulation_summary.json
 !reports/intraday_exit_summary.csv
 !reports/figures/
 !reports/figures/**
 *.pdf
+!reports/frozen_strategy_report.pdf
 !ctx/*.pdf
 docs/
 DATA_README.md
