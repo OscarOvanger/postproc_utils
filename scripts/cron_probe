@@ -1,0 +1,49 @@
+#!/bin/bash
+# Cron probe helpers for macOS Full Disk Access verification.
+# Usage:
+#   scripts/cron_probe install    # print crontab line to add
+#   scripts/cron_probe check      # verify /tmp/cron_probe.log has recent entries
+#   scripts/cron_probe remove     # print how to remove probe line
+
+set -euo pipefail
+
+PROJECT_DIR="/Users/oscaro/Desktop/MCP_Project"
+PROBE_LOG="/tmp/cron_probe.log"
+CRON_LINE='* * * * * /bin/date >> /tmp/cron_probe.log 2>&1'
+
+cmd="${1:-}"
+
+case "$cmd" in
+    install)
+        echo "Add this line to crontab (crontab -e):"
+        echo "$CRON_LINE"
+        echo ""
+        echo "Grant Full Disk Access to /usr/sbin/cron in System Settings first."
+        echo "Wait 2+ minutes, then run: scripts/cron_probe check"
+        ;;
+    check)
+        if [[ ! -f "$PROBE_LOG" ]]; then
+            echo "FAIL: $PROBE_LOG does not exist — cron has not fired yet."
+            exit 1
+        fi
+        count=$(wc -l < "$PROBE_LOG" | tr -d ' ')
+        if (( count < 2 )); then
+            echo "FAIL: only $count line(s) in $PROBE_LOG (need >= 2)."
+            tail -5 "$PROBE_LOG" || true
+            exit 1
+        fi
+        echo "OK: $count entries in $PROBE_LOG"
+        echo "Latest:"
+        tail -3 "$PROBE_LOG"
+        ;;
+    remove)
+        echo "Remove the probe line from crontab:"
+        echo "  $CRON_LINE"
+        echo "Then verify autotrader at next :x5 tick:"
+        echo "  tail -f $PROJECT_DIR/logs/cron_stderr.log"
+        ;;
+    *)
+        echo "Usage: cron_probe {install|check|remove}"
+        exit 1
+        ;;
+esac

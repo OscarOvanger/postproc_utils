@@ -103,8 +103,9 @@ def simulate_variant(variant: str, config: dict, force: bool) -> None:
             if is_modal:
                 desired = 5
             elif is_flat:
-                desired = int(config.get("n_contracts_default", 5))
-                assert desired == 5, f"Polymarket minimum order size is 5 contracts, got {desired}"
+                from src.sizing import poly_contracts_for_price
+
+                desired = poly_contracts_for_price(entry_price)
             else:
                 desired = original_n
             fitted = fit_contracts(desired, entry_price, bankroll, daily_spent, day_cap)

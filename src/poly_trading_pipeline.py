@@ -42,9 +42,11 @@ from src.polymarket_api import (  # noqa: E402
 )
 from src.rolling_bias import compute_rolling_bias  # noqa: E402
 from src.sizing import (  # noqa: E402
+    assert_poly_order_notional,
     daily_cap_from_bankroll,
     effective_probability,
     has_edge,
+    poly_contracts_for_price,
     seasonal_shrinkage_lambda,
 )
 
@@ -704,14 +706,14 @@ def size_positions_poly(
 ) -> list[dict[str, Any]]:
     """Apply flat sizing and daily loss cap with Polymarket fee model."""
     print("\n--- size_positions ---")
-    n_contracts = int(config["n_contracts_default"])
-    assert n_contracts == 5, f"Polymarket minimum order size is 5 contracts, got {n_contracts}"
     daily_cap = daily_cap_from_bankroll(bankroll, config)
+    print(f"  operative daily cap at ${bankroll:.2f} = ${daily_cap:.2f} (source: sizing.daily_cap_from_bankroll)")
 
     sized: list[dict[str, Any]] = []
     for trade in trades:
         maker_price = float(trade.get("maker_entry_price") or trade["market_price"])
-        assert n_contracts == 5
+        n_contracts = poly_contracts_for_price(maker_price)
+        assert_poly_order_notional(n_contracts, maker_price)
         sized.append(
             {
                 **trade,
@@ -770,6 +772,7 @@ def prepare_poly_trades(
         from src.ngboost_live_forecast import (  # noqa: E402
             NgBoostLiveModels,
             build_live_features,
+            last_feature_fail_reason,
             predict_ngboost_from_features,
         )
 
@@ -781,18 +784,25 @@ def prepare_poly_trades(
             print(f"\n  {city}")
             feat_df = build_live_features(city, event_date)
             if feat_df is None:
-                forecast_reasons[city] = "ngboost_unavailable"
+                forecast_reasons[city] = (
+                    last_feature_fail_reason(city, event_date) or "ngboost_unavailable"
+                )
+                print(f"    NO SIGNAL: {city} (reason: {forecast_reasons[city]})")
                 continue
             cloud_norm = bc.normalize_peak_cloud_cover(float(feat_df.iloc[0]["peak_cloud_cover"]))
             if bc.convective_skip(city, event_date, cloud_norm, poly_config):
-                forecast_reasons[city] = f"convective_skip cloud={cloud_norm:.3f}"
-                print(f"    SKIP ({forecast_reasons[city]})")
+                forecast_reasons[city] = f"convective_skip: cloud={cloud_norm:.3f}"
+                print(f"    NO SIGNAL: {city} (reason: {forecast_reasons[city]})")
                 continue
             mu, sigma = predict_ngboost_from_features(ngboost_models, feat_df)
             forecasts[city] = mu
             sigmas[city] = sigma
             forecast_notes[city] = f"NGBoost mu={mu:.1f} sigma={sigma:.2f}"
             print(f"    {forecast_notes[city]}")
+        for city in poly_config["cities"]:
+            if city not in forecasts:
+                reason = forecast_reasons.get(city, "unknown")
+                print(f"    NO SIGNAL: {city} (reason: {reason})")
     else:
         wunderground_bias = load_wunderground_bias()
         int_forecasts, forecast_reasons, forecast_notes = fetch_forecast(
@@ -850,7 +860,13 @@ def prepare_poly_trades(
         metadata["bias_applied"] = bias_applied
         metadata["ngboost_sigmas"] = sigmas
         for city, reason in sorted(forecast_reasons.items()):
-            print(f"  {city}: SKIP ({reason})")
+            if city not in forecasts:
+                print(f"  NO SIGNAL: {city} (reason: {reason})")
+    metadata["no_signal_cities"] = {
+        city: forecast_reasons.get(city, "unknown")
+        for city in poly_config["cities"]
+        if city not in forecasts
+    }
 
     halflife = int(poly_config.get("rolling_bias_halflife_days", 20))
     max_corr = float(poly_config.get("max_rolling_correction_f", 1.5))

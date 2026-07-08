@@ -359,15 +359,16 @@ def size_positions(
     config: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Apply flat sizing, drawdown scaling, and daily loss cap."""
+    from src.sizing import assert_poly_order_notional, daily_cap_from_bankroll, poly_contracts_for_price
+
     print("\n--- size_positions ---")
-    n_contracts = int(config["n_contracts_default"])
-    assert n_contracts == 5, f"Polymarket minimum order size is 5 contracts, got {n_contracts}"
-    daily_cap = float(config["daily_loss_cap"])
+    daily_cap = daily_cap_from_bankroll(bankroll, config)
 
     sized: list[dict[str, Any]] = []
     for trade in trades:
         price = float(trade["market_price"])
-        assert n_contracts == 5
+        n_contracts = poly_contracts_for_price(price)
+        assert_poly_order_notional(n_contracts, price)
         fee_cents = taker_fee(n_contracts, price)
         sized_trade = {
             **trade,

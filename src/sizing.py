@@ -4,6 +4,28 @@ from datetime import date as date_cls
 import numpy as np
 from scipy.optimize import minimize
 
+POLY_MIN_SHARES = 5
+POLY_MIN_NOTIONAL_USD = 1.0
+POLY_NOTIONAL_BUFFER = 1.005
+
+
+def poly_contracts_for_price(entry_price: float) -> int:
+    """Polymarket: min 5 shares and min ~$1 order notional."""
+    if entry_price <= 0:
+        return POLY_MIN_SHARES
+    return max(POLY_MIN_SHARES, math.ceil(POLY_NOTIONAL_BUFFER / entry_price))
+
+
+def assert_poly_order_notional(n_contracts: int, entry_price: float) -> None:
+    assert n_contracts >= POLY_MIN_SHARES, (
+        f"Polymarket minimum order size is {POLY_MIN_SHARES} contracts, got {n_contracts}"
+    )
+    notional = n_contracts * entry_price
+    assert notional >= POLY_MIN_NOTIONAL_USD, (
+        f"Polymarket minimum notional is ${POLY_MIN_NOTIONAL_USD:.2f}, "
+        f"got ${notional:.2f} ({n_contracts} @ ${entry_price:.2f})"
+    )
+
 
 def full_kelly(p: float, c: float, cap: float = 0.08) -> float:
     """Kelly fraction for a binary bet.

@@ -4,7 +4,8 @@
 
 # Capture all stderr so cron failures are never silent.
 STDERR_LOG="/Users/oscaro/Desktop/MCP_Project/logs/cron_stderr.log"
-LOCKFILE="/Users/oscaro/Desktop/MCP_Project/logs/cron_autotrader.lock"
+LOCKDIR="/Users/oscaro/Desktop/MCP_Project/logs/cron_autotrader.lockdir"
+STALE_LOCK_MINUTES=60
 mkdir -p "$(dirname "$STDERR_LOG")"
 exec 2>> "$STDERR_LOG"
 echo "=== $(date) === $0 $*" >> "$STDERR_LOG"
@@ -15,9 +16,33 @@ PROJECT_DIR="/Users/oscaro/Desktop/MCP_Project"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 cd "$PROJECT_DIR"
 
-exec 200>"$LOCKFILE"
-if ! flock -n 200; then
+release_lock() {
+    rmdir "$LOCKDIR" 2>/dev/null || true
+}
+trap release_lock EXIT
+
+acquire_lock() {
+    if mkdir "$LOCKDIR" 2>/dev/null; then
+        return 0
+    fi
+    if [[ ! -d "$LOCKDIR" ]]; then
+        echo "previous run still active"
+        return 1
+    fi
+    # macOS: stat -f %m for mtime
+    lock_mtime=$(stat -f %m "$LOCKDIR" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    age_min=$(( (now - lock_mtime) / 60 ))
+    if (( age_min > STALE_LOCK_MINUTES )); then
+        echo "STALE LOCK (${age_min}m) — alerting and proceeding" >> "$STDERR_LOG"
+        rmdir "$LOCKDIR" 2>/dev/null || rm -rf "$LOCKDIR"
+        mkdir "$LOCKDIR" 2>/dev/null && return 0
+    fi
     echo "previous run still active"
+    return 1
+}
+
+if ! acquire_lock; then
     exit 0
 fi
 
@@ -56,7 +81,7 @@ send_pushover() {
     if [[ -z "$user_key" || -z "$api_token" ]]; then
         return 0
     fi
-    curl -s \
+    curl -s --max-time 15 \
         --form-string "token=${api_token}" \
         --form-string "user=${user_key}" \
         --form-string "title=${title}" \
@@ -89,19 +114,10 @@ if awk -v b="$BANKROLL" 'BEGIN { exit !(b < 72) }'; then
     exit 0
 fi
 
-# Optional VPN check for live mode (uncomment when ready)
-# if [[ "$MODE" == "live" ]]; then
-#     if ! curl -s --max-time 5 https://api.ipify.org | grep -qv "^$"; then
-#         echo "VPN check failed" >> "$LOG"
-#         send_pushover "Autotrader VPN check failed" "Live trading skipped — check VPN."
-#         exit 1
-#     fi
-# fi
-
 set +e
 python "$PROJECT_DIR/scripts/auto_trader_poly.py" \
     --mode "$MODE" \
-    --strategy trackb \
+    --strategy ngboost \
     --bankroll "$BANKROLL" \
     >> "$LOG" 2>&1
 EXIT_CODE=$?

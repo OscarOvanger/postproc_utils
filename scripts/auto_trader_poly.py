@@ -39,6 +39,11 @@ from src.polymarket_api import (  # noqa: E402
     PolymarketClient,
     fetch_order_book_http,
 )
+from src.sizing import (  # noqa: E402
+    assert_poly_order_notional,
+    daily_cap_from_bankroll,
+    poly_contracts_for_price,
+)
 
 CT = ZoneInfo("America/Chicago")
 STATE_DIR = PROJECT_ROOT / "logs"
@@ -49,7 +54,6 @@ ENTRY_TIMEOUT_MIN = 60
 MONITOR_END_HOUR = 22
 ENTRY_HOUR = 10
 ENTRY_MINUTE = 5
-DAILY_LOSS_CAP = 6.0
 BOOK_FETCH_DELAY_SEC = 0.2
 
 MODAL_MAKER_CITIES = ["houston", "los_angeles"]
@@ -84,9 +88,15 @@ def send_pushover(title: str, message: str) -> None:
             data=data,
             method="POST",
         )
-        urllib.request.urlopen(req, timeout=10)
+        urllib.request.urlopen(req, timeout=15)
+    except TimeoutError as exc:
+        print(f"  Pushover WARN (timeout; message may still deliver): {exc}")
     except Exception as exc:
-        print(f"  Pushover failed: {exc}")
+        err = str(exc).lower()
+        if "timed out" in err or "timeout" in err:
+            print(f"  Pushover WARN (timeout; message may still deliver): {exc}")
+        else:
+            print(f"  Pushover failed: {exc}")
 
 
 def git_freeze_hash() -> str:
@@ -115,14 +125,35 @@ def read_bankroll_file() -> float | None:
         return None
 
 
-def emit_config_echo(mode: str, bankroll: float) -> str:
+def normalize_strategy_name(strategy: str | None) -> str | None:
+    if strategy == "trackb":
+        return "ngboost"
+    return strategy
+
+
+def operative_daily_cap(bankroll: float) -> float:
+    poly_config, _ = build_poly_config(DEFAULT_CONFIG_PATH)
+    cap = daily_cap_from_bankroll(bankroll, poly_config)
+    print(
+        f"operative daily cap at ${bankroll:.2f} = ${cap:.2f} "
+        f"(source: sizing.daily_cap_from_bankroll)"
+    )
+    return cap
+
+
+def emit_config_echo(mode: str, bankroll: float, strategy: str = "ngboost") -> str:
     poly_config, _ = build_poly_config(DEFAULT_CONFIG_PATH)
     cities = poly_config.get("cities", [])
+    model_dir = poly_config.get("model_dir", "models/ngboost_v2")
+    daily_cap = daily_cap_from_bankroll(bankroll, poly_config)
     lines = [
         "CONFIG ECHO (frozen D3)",
         f"  commit={git_freeze_hash()}",
         f"  mode={mode}",
+        f"  strategy={strategy}",
+        f"  model_dir={model_dir}",
         f"  bankroll=${bankroll:.2f}",
+        f"  operative_daily_cap=${daily_cap:.2f}",
         f"  signal={poly_config.get('signal')}",
         f"  shrinkage_lambda={poly_config.get('shrinkage_lambda')}",
         f"  convective_cloud_skip_threshold={poly_config.get('convective_cloud_skip_threshold')}",
@@ -132,6 +163,10 @@ def emit_config_echo(mode: str, bankroll: float) -> str:
         f"  edge_threshold={poly_config.get('edge_threshold')}",
         f"  max_trades_per_day={poly_config.get('max_trades_per_day')}",
     ]
+    print(
+        f"operative daily cap at ${bankroll:.2f} = ${daily_cap:.2f} "
+        f"(source: sizing.daily_cap_from_bankroll)"
+    )
     message = "\n".join(lines)
     print(message)
     return message
@@ -173,7 +208,12 @@ def load_state(date_str: str) -> dict[str, Any] | None:
     path = state_path(date_str)
     if path.exists():
         with open(path, encoding="utf-8") as handle:
-            return json.load(handle)
+            state = json.load(handle)
+        if "strategy" in state:
+            state["strategy"] = normalize_strategy_name(state["strategy"])
+        if "daily_loss_cap" in state and "daily_budget_cap" not in state:
+            state["daily_budget_cap"] = state.pop("daily_loss_cap")
+        return state
     return None
 
 
@@ -223,6 +263,105 @@ def _to_float(value: Any) -> float | None:
 
 def _is_modal_strategy(state: dict[str, Any]) -> bool:
     return state.get("strategy") == STRATEGY_NAME
+
+
+def _tick_float(tick_size: str) -> float:
+    return float(tick_size)
+
+
+def _fresh_edge_ok(
+    trade: dict[str, Any],
+    maker_price: float,
+    poly_config: dict[str, Any],
+) -> tuple[bool, float]:
+    model_prob = float(trade["model_prob"])
+    edge = model_prob - maker_price
+    if trade.get("entry_mode") == "fallback":
+        min_edge = float(poly_config.get("pace_fallback_min_edge", 0.01))
+        return edge >= min_edge, edge
+    threshold = float(poly_config["edge_threshold"])
+    return edge >= threshold, edge
+
+
+def _order_error_text(result: dict[str, Any]) -> str:
+    return str(result.get("error") or result.get("status") or "unknown")
+
+
+def _retryable_order_failure(result: dict[str, Any]) -> bool:
+    status = str(result.get("status", ""))
+    err = _order_error_text(result).lower()
+    if status in ("rejected_would_cross", "error"):
+        return True
+    return any(token in err for token in ("post", "cross", "min size", "400", "invalid amount"))
+
+
+def place_live_entry_with_fresh_book(
+    trade: dict[str, Any],
+    *,
+    poly_config: dict[str, Any],
+) -> tuple[dict[str, Any], float, int, float | None, float | None]:
+    """Fetch fresh book, recheck edge, post maker entry with one retry."""
+    token_id = trade["yes_token_id"]
+    tick = _tick_float(str(trade.get("tick_size", "0.01")))
+    maker_price = 0.0
+    n_contracts = 0
+    best_bid: float | None = None
+    best_ask: float | None = None
+    last_result: dict[str, Any] = {"status": "error", "error": "no_attempt"}
+
+    for attempt in (1, 2):
+        best_bid, best_ask = get_best_bid_ask(token_id)
+        maker_price = compute_maker_entry_price(
+            best_bid=best_bid,
+            best_ask=best_ask,
+            gamma_price=None,
+            tick_size=tick,
+        )
+        if maker_price is None:
+            return (
+                {"status": "error", "error": "no_maker_price"},
+                0.0,
+                0,
+                best_bid,
+                best_ask,
+            )
+
+        ok, edge = _fresh_edge_ok(trade, float(maker_price), poly_config)
+        if not ok:
+            threshold = (
+                poly_config.get("pace_fallback_min_edge")
+                if trade.get("entry_mode") == "fallback"
+                else poly_config["edge_threshold"]
+            )
+            err = f"fresh edge {edge:.4f} < {threshold} at ${maker_price:.2f}"
+            return (
+                {"status": "cancelled", "error": err},
+                float(maker_price),
+                0,
+                best_bid,
+                best_ask,
+            )
+
+        n_contracts = poly_contracts_for_price(float(maker_price))
+        assert_poly_order_notional(n_contracts, float(maker_price))
+        last_result = place_maker_entry(
+            token_id=token_id,
+            price=float(maker_price),
+            size=n_contracts,
+            tick_size=str(trade.get("tick_size", "0.01")),
+        )
+        if last_result.get("status") in ("posted", "signed"):
+            return last_result, float(maker_price), n_contracts, best_bid, best_ask
+
+        if attempt == 1 and _retryable_order_failure(last_result):
+            print(
+                f"  RETRY: {trade['city']} after {_order_error_text(last_result)}"
+            )
+            time.sleep(BOOK_FETCH_DELAY_SEC)
+            continue
+        break
+
+    return last_result, float(maker_price), n_contracts, best_bid, best_ask
 
 
 def place_maker_entry(
@@ -298,7 +437,7 @@ def compute_bucket_midpoint(
     return fallback
 
 
-def select_modal_trades(event_date: str) -> list[dict[str, Any]]:
+def select_modal_trades(event_date: str, bankroll: float) -> list[dict[str, Any]]:
     """Fetch markets and select modal-bucket trades for MODAL_MAKER_CITIES."""
     print("\n--- PHASE 1: fetch_market (modal maker) ---")
     config = {"cities": list(MODAL_MAKER_CITIES)}
@@ -372,6 +511,8 @@ def select_modal_trades(event_date: str) -> list[dict[str, Any]]:
             continue
 
         exit_target_price = round(maker_entry_price + EXIT_THRESHOLD, 2)
+        n_contracts = poly_contracts_for_price(maker_entry_price)
+        assert_poly_order_notional(n_contracts, maker_entry_price)
         eligible.append(
             {
                 "city": city,
@@ -384,18 +525,18 @@ def select_modal_trades(event_date: str) -> list[dict[str, Any]]:
                 "maker_entry_price": maker_entry_price,
                 "exit_target_price": exit_target_price,
                 "tick_size": str(modal_row.get("tick_size", "0.01")),
-                "n_contracts": N_CONTRACTS,
-                "capital_at_risk": round(N_CONTRACTS * maker_entry_price, 4),
+                "n_contracts": n_contracts,
+                "capital_at_risk": round(n_contracts * maker_entry_price, 4),
             }
         )
-        assert N_CONTRACTS == 5
 
+    daily_cap = operative_daily_cap(bankroll)
     eligible.sort(key=lambda trade: trade["maker_entry_price"])
     selected: list[dict[str, Any]] = []
     cumulative = 0.0
     for trade in eligible:
-        if cumulative + trade["capital_at_risk"] > DAILY_LOSS_CAP:
-            print(f"  Skipped {trade['city']} (daily cap ${DAILY_LOSS_CAP:.2f})")
+        if cumulative + trade["capital_at_risk"] > daily_cap:
+            print(f"  Skipped {trade['city']} (daily cap ${daily_cap:.2f})")
             continue
         selected.append(trade)
         cumulative += trade["capital_at_risk"]
@@ -476,7 +617,7 @@ def initialize_day_modal_maker(state: dict[str, Any]) -> dict[str, Any]:
     now = datetime.now(CT)
     state["strategy"] = STRATEGY_NAME
 
-    sized_trades = select_modal_trades(state["date"])
+    sized_trades = select_modal_trades(state["date"], float(state["bankroll"]))
     if not sized_trades:
         print("  WARNING: no eligible modal-maker trades.")
         state["phase"] = "monitoring"
@@ -487,9 +628,8 @@ def initialize_day_modal_maker(state: dict[str, Any]) -> dict[str, Any]:
     print(f"\n--- PHASE 4-5: place entry and exit orders ---")
     positions: list[dict[str, Any]] = []
     for trade in sized_trades:
-        assert int(trade["n_contracts"]) == 5, (
-            f"Polymarket minimum order size is 5 contracts, got {trade['n_contracts']}"
-        )
+        assert int(trade["n_contracts"]) >= 5
+        assert float(trade["n_contracts"]) * float(trade["maker_entry_price"]) >= 1.0
         pos: dict[str, Any] = {
             "city": trade["city"],
             "bucket_label": trade["bucket_label"],
@@ -541,12 +681,10 @@ def initialize_day_modal_maker(state: dict[str, Any]) -> dict[str, Any]:
                 pos["status"] = "cancelled"
                 pos["exit_reason"] = "rejected_would_cross"
             elif order_result.get("status") == "error":
-                print(
-                    f"  ERROR: {trade['city']} entry failed: "
-                    f"{order_result.get('error')}"
-                )
+                err = _order_error_text(order_result)
+                print(f"  ERROR: {trade['city']} entry failed: {err}")
                 pos["status"] = "cancelled"
-                pos["exit_reason"] = "entry_error"
+                pos["exit_reason"] = err
             else:
                 pos["status"] = "pending_entry"
                 pos["order_id"] = order_result.get("order_id")
@@ -632,6 +770,10 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
     if metadata.get("ngboost_sigmas"):
         state["ngboost_sigmas"] = metadata["ngboost_sigmas"]
 
+    no_signal = metadata.get("no_signal_cities", {})
+    for city, reason in sorted(no_signal.items()):
+        print(f"  NO SIGNAL: {city} (reason: {reason})")
+
     signal = metadata.get("poly_config", {}).get("signal", "track_b_flat")
     state["signal"] = signal
     if signal == "ngboost":
@@ -645,11 +787,13 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
 
     print(f"  Selected: {len(sized_trades)} trades")
 
+    poly_config = metadata.get("poly_config", build_poly_config(DEFAULT_CONFIG_PATH)[0])
+    state["daily_budget_cap"] = daily_cap_from_bankroll(bankroll, poly_config)
+
     positions: list[dict[str, Any]] = []
     for trade in sized_trades:
-        assert int(trade["n_contracts"]) == 5, (
-            f"Polymarket minimum order size is 5 contracts, got {trade['n_contracts']}"
-        )
+        assert int(trade["n_contracts"]) >= 5
+        assert float(trade["n_contracts"]) * float(trade["maker_entry_price"]) >= 1.0
         pos = {
             "city": trade["city"],
             "bucket_label": trade["bucket_label"],
@@ -685,30 +829,27 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
                 f"@ ${trade['maker_entry_price']:.2f} | edge={trade['edge']:+.3f}"
             )
         else:
-            order_result = place_maker_entry(
-                token_id=trade["yes_token_id"],
-                price=float(trade["maker_entry_price"] or trade["market_price"]),
-                size=int(trade["n_contracts"]),
-                tick_size=str(trade.get("tick_size", "0.01")),
+            order_result, fresh_price, n_contracts, best_bid, best_ask = (
+                place_live_entry_with_fresh_book(trade, poly_config=poly_config)
             )
-            if order_result.get("status") == "rejected_would_cross":
-                print(
-                    f"  REJECTED: {trade['city']} would cross at "
-                    f"${trade['maker_entry_price']:.2f}"
-                )
-                pos["status"] = "cancelled"
-                pos["exit_reason"] = "rejected_would_cross"
-            elif order_result.get("status") == "error":
-                print(f"  ERROR: {trade['city']} entry failed: {order_result.get('error')}")
-                pos["status"] = "cancelled"
-                pos["exit_reason"] = "entry_error"
-            else:
+            pos["maker_entry_price"] = fresh_price
+            pos["n_contracts"] = n_contracts
+            pos["capital_at_risk"] = round(n_contracts * fresh_price, 4)
+            pos["best_bid_at_entry"] = best_bid
+            pos["best_ask_at_entry"] = best_ask
+            status = order_result.get("status", "")
+            if status in ("posted", "signed"):
                 pos["status"] = "pending_entry"
                 pos["order_id"] = order_result.get("order_id")
                 print(
                     f"  ENTRY PLACED: {trade['city']} {trade['bucket_label']} "
-                    f"@ ${trade['maker_entry_price']:.2f} | order={pos['order_id']}"
+                    f"@ ${fresh_price:.2f} x{n_contracts} | order={pos['order_id']}"
                 )
+            else:
+                err = _order_error_text(order_result)
+                print(f"  ERROR: {trade['city']} entry failed: {err}")
+                pos["status"] = "cancelled"
+                pos["exit_reason"] = err
 
         positions.append(pos)
         append_trade_log(
@@ -739,13 +880,17 @@ def initialize_day(state: dict[str, Any]) -> dict[str, Any]:
         4,
     )
 
-    send_pushover(
-        f"Auto-trader: {len(positions)} entries ({state['mode']})",
-        "\n".join(
+    push_lines = []
+    for city, reason in sorted(no_signal.items()):
+        push_lines.append(f"NO SIGNAL: {city} (reason: {reason})")
+    for p in positions:
+        push_lines.append(
             f"{p['city']} {p['bucket_label']} @ ${p['maker_entry_price']:.2f} "
             f"edge={p['edge']:+.3f} mode={p.get('entry_mode', 'primary')} [{p['status']}]"
-            for p in positions
-        ),
+        )
+    send_pushover(
+        f"Auto-trader: {len(positions)} entries ({state['mode']})",
+        "\n".join(push_lines),
     )
     return state
 
@@ -1268,15 +1413,22 @@ def end_of_day_modal(state: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
+def _canonical_strategy(cli_strategy: str) -> str:
+    if cli_strategy == "trackb":
+        print("  strategy alias 'trackb' -> 'ngboost' (naming legacy)")
+        return "ngboost"
+    return cli_strategy
+
+
 def _resolve_strategy(args: argparse.Namespace, state: dict[str, Any]) -> str:
-    cli_strategy = args.strategy
-    persisted = state.get("strategy")
+    cli_strategy = _canonical_strategy(args.strategy)
+    persisted = normalize_strategy_name(state.get("strategy"))
     if persisted == STRATEGY_NAME:
         return "modal_maker"
-    if persisted and persisted not in (STRATEGY_NAME, "trackb"):
+    if persisted and persisted not in (STRATEGY_NAME, "ngboost"):
         return cli_strategy
     if state.get("phase") != "uninitialized" and persisted is None:
-        return "trackb"
+        return "ngboost"
     if (
         state.get("phase") != "uninitialized"
         and cli_strategy == "modal_maker"
@@ -1286,14 +1438,18 @@ def _resolve_strategy(args: argparse.Namespace, state: dict[str, Any]) -> str:
             f"  WARNING: persisted strategy={persisted!r} differs from "
             f"CLI --strategy={cli_strategy!r}; using persisted state."
         )
-        return "trackb"
+        return "ngboost"
     return cli_strategy
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Automated Polymarket Tmax trader")
     parser.add_argument("--mode", default="paper", choices=["paper", "live"])
-    parser.add_argument("--strategy", default="trackb", choices=["trackb", "modal_maker"])
+    parser.add_argument(
+        "--strategy",
+        default="ngboost",
+        choices=["ngboost", "trackb", "modal_maker"],
+    )
     parser.add_argument("--date", default=None)
     parser.add_argument("--bankroll", type=float, default=None)
     parser.add_argument(
@@ -1331,14 +1487,16 @@ def main() -> None:
             "entry_time": None,
             "positions": [],
             "daily_capital_at_risk": 0.0,
-            "daily_loss_cap": DAILY_LOSS_CAP,
+            "daily_budget_cap": operative_daily_cap(bankroll),
             "trades_log": [],
             "last_tick": now.isoformat(),
             "cities": cities,
-            "strategy": STRATEGY_NAME if args.strategy == "modal_maker" else "trackb",
+            "strategy": STRATEGY_NAME if args.strategy == "modal_maker" else "ngboost",
         }
 
     strategy = _resolve_strategy(args, state)
+    if strategy == "ngboost" and state.get("strategy") != STRATEGY_NAME:
+        state["strategy"] = "ngboost"
     state["last_tick"] = now.isoformat()
 
     if state["phase"] == "done":
@@ -1361,7 +1519,9 @@ def main() -> None:
             save_state(state)
             return
 
-        config_message = emit_config_echo(state["mode"], float(state["bankroll"]))
+        config_message = emit_config_echo(
+            state["mode"], float(state["bankroll"]), strategy=strategy
+        )
         send_pushover(f"Autotrader config ({date_str})", config_message)
         if not run_preflight(state["mode"]):
             state["phase"] = "monitoring"

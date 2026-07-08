@@ -16,11 +16,12 @@ import contextlib
 import io
 import json
 import math
+import subprocess
 import sys
 import time
 import warnings
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -54,8 +55,12 @@ from src.polymarket_api import (  # noqa: E402
     parse_bucket_label,
 )
 from src.poly_trading_pipeline import poly_taker_fee  # noqa: E402
+from src.rolling_bias import load_residuals_df  # noqa: E402
 
 WU_PATH = PROJECT_ROOT / "data" / "polymarket" / "wunderground_targets.parquet"
+DEPLOY_CONFIG_PATH = PROJECT_ROOT / "config" / "deploy_config.json"
+BANKROLL_FILE = PROJECT_ROOT / "logs" / "current_bankroll.txt"
+RESIDUALS_PATH = PROJECT_ROOT / "data" / "polymarket" / "rolling_bias_residuals.parquet"
 AUTO_STATE_GLOB = "auto_trader_state_*.json"
 PAPER_LOG = PROJECT_ROOT / "logs" / "poly_paper_trades.jsonl"
 DEFAULT_STARTING_BANKROLL = 100.0
@@ -973,33 +978,51 @@ def collect_trades(
             )
             settled.append(trade)
         elif is_past:
+            if entry_price is not None and bucket not in ("?", ""):
+                try:
+                    balance = client.get_conditional_balance(token)
+                except Exception:
+                    balance = 0.0
+                if balance <= 0:
+                    trade.won = False
+                    trade.winning_bucket = "unresolved"
+                    trade.pnl_usd = settlement_pnl(
+                        n_contracts=matched,
+                        entry_price=entry_price,
+                        won=False,
+                        is_taker=is_taker,
+                    )
             settled.append(trade)
         else:
-            best_bid, best_ask = fetch_book_cached(token, book_cache, fetch=True)
-            mid = (
-                (best_bid + best_ask) / 2
-                if best_bid is not None and best_ask is not None
-                else best_ask
-            )
-            open_rows.append(
-                OpenPosition(
-                    kind="held_shares",
-                    order_id=order_id,
-                    placed_at=str(record.get("timestamp", "")),
-                    city=city_display,
-                    bucket_label=bucket,
-                    event_date=event_date,
-                    n_contracts=matched,
-                    entry_price=entry_price,
-                    best_bid=best_bid,
-                    best_ask=best_ask,
-                    midpoint=mid,
-                    trackb_f=trade.trackb_f,
-                    ngboost_mu=trade.ngboost_mu,
-                    modal_bucket=modal_bucket,
-                    is_modal=is_modal,
+            yesterday = (date.fromisoformat(today) - timedelta(days=1)).isoformat()
+            if event_date >= yesterday:
+                best_bid, best_ask = fetch_book_cached(token, book_cache, fetch=True)
+                mid = (
+                    (best_bid + best_ask) / 2
+                    if best_bid is not None and best_ask is not None
+                    else best_ask
                 )
-            )
+                open_rows.append(
+                    OpenPosition(
+                        kind="held_shares",
+                        order_id=order_id,
+                        placed_at=str(record.get("timestamp", "")),
+                        city=city_display,
+                        bucket_label=bucket,
+                        event_date=event_date,
+                        n_contracts=matched,
+                        entry_price=entry_price,
+                        best_bid=best_bid,
+                        best_ask=best_ask,
+                        midpoint=mid,
+                        trackb_f=trade.trackb_f,
+                        ngboost_mu=trade.ngboost_mu,
+                        modal_bucket=modal_bucket,
+                        is_modal=is_modal,
+                    )
+                )
+            else:
+                settled.append(trade)
 
     seen_tokens = {str(r.get("token_id", "")) for r in posted.values()}
     for token, meta in token_index.items():
@@ -1120,12 +1143,115 @@ def collect_holdings(
     return holdings
 
 
-def print_settled_trades(trades: list[TradeRecord]) -> None:
-    resolved = [t for t in trades if t.pnl_usd is not None]
-    pending = [t for t in trades if t.pnl_usd is None]
+def git_commit_hash() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=PROJECT_ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        return "unknown"
 
-    print(f"\n=== Settled / closed trades ({len(resolved)} with PnL) ===")
-    if not resolved:
+
+def read_bankroll_file() -> float | None:
+    if not BANKROLL_FILE.exists():
+        return None
+    try:
+        return float(BANKROLL_FILE.read_text().strip())
+    except ValueError:
+        return None
+
+
+def load_deploy_config() -> dict[str, Any]:
+    if not DEPLOY_CONFIG_PATH.exists():
+        return {}
+    with open(DEPLOY_CONFIG_PATH, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def print_morning_preflight(client: PolymarketClient) -> None:
+    today = str(date.today())
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    print("=== MORNING PREFLIGHT ===", flush=True)
+
+    file_bankroll = read_bankroll_file()
+    try:
+        api_bankroll = client.get_balance()
+    except Exception as exc:
+        api_bankroll = None
+        print(f"  Bankroll: file={fmt_price(file_bankroll)} | API=ERROR ({exc})")
+    if file_bankroll is not None and api_bankroll is not None:
+        diff = abs(file_bankroll - api_bankroll)
+        print(
+            f"  Bankroll: file=${file_bankroll:.2f} | API=${api_bankroll:.2f} | "
+            f"diff=${diff:.2f}"
+        )
+        if diff >= 0.50:
+            print("  *** RECONCILIATION MISMATCH — investigate ***")
+
+    residuals = load_residuals_df()
+    print("  Rolling-bias residuals (latest date per city):")
+    if residuals.empty:
+        print("    (none on file)")
+    else:
+        for city in sorted(residuals["city"].unique()):
+            sub = residuals[residuals["city"] == city]
+            latest = str(sub["date"].max())
+            try:
+                days_stale = (date.fromisoformat(today) - date.fromisoformat(latest)).days
+            except ValueError:
+                days_stale = 999
+            flag = " STALE (>2d)" if days_stale > 2 else ""
+            print(f"    {city}: {latest}{flag}")
+
+    deploy = load_deploy_config()
+    cities = deploy.get("cities", [])
+    model_dir = deploy.get("model_dir", "models/ngboost_v2")
+    print(
+        f"  Strategy: ngboost | model_dir={model_dir} | "
+        f"lambda={deploy.get('shrinkage_lambda', '?')} "
+        f"threshold={deploy.get('convective_cloud_skip_threshold', '?')} "
+        f"cities={len(cities)} "
+        f"fallback={'on' if deploy.get('pace_fallback_enabled') else 'off'} "
+        f"divisor={deploy.get('budget_divisor', '?')} "
+        f"commit={git_commit_hash()}"
+    )
+
+    print(f"  Market availability for {today}:")
+    try:
+        from scan_modal_buckets import TARGET_CITIES, discover_markets
+
+        discovered = discover_markets(today, include_closed=False)
+        deploy_slugs = set(cities)
+        for slug, display in TARGET_CITIES:
+            if slug not in deploy_slugs:
+                continue
+            yes = "yes" if slug in discovered else "no"
+            print(f"    {display}: Tmax event {yes}")
+    except Exception as exc:
+        print(f"    (market scan failed: {exc})")
+
+    state_path = PROJECT_ROOT / "logs" / f"auto_trader_state_{today}.json"
+    if state_path.exists():
+        print(f"  Crontab liveness: state file exists ({state_path.name})")
+    else:
+        print("  Crontab liveness: awaiting first cycle (no state file yet)")
+    print(flush=True)
+
+
+def print_settled_trades(trades: list[TradeRecord]) -> None:
+    today = str(date.today())
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    closed = [t for t in trades if t.event_date < today or t.pnl_usd is not None]
+    resolved = [t for t in closed if t.pnl_usd is not None]
+    pending = [t for t in trades if t.pnl_usd is None]
+    stale_pending = [t for t in pending if t.event_date < yesterday]
+    legal_pending = [t for t in pending if t.event_date >= yesterday]
+
+    print(f"\n=== Settled / closed trades ({len(closed)} rows, {len(resolved)} with PnL) ===")
+    if not closed:
         print("  (none settled yet)")
     else:
         header = (
@@ -1134,7 +1260,7 @@ def print_settled_trades(trades: list[TradeRecord]) -> None:
         )
         print(header)
         print("-" * len(header))
-        for t in resolved:
+        for t in closed:
             print(
                 f"{t.placed_at[:19]:<20} {t.city:<14} {t.bucket_label:<10} {t.n_contracts:4.0f} "
                 f"{fmt_price(t.entry_price):>6} {fmt_price(t.bid_at_entry):>6} "
@@ -1148,11 +1274,20 @@ def print_settled_trades(trades: list[TradeRecord]) -> None:
             "Bid@/Ask@ from order-time logs when available."
         )
 
-    if pending:
-        print(f"\n=== Filled but unsettled ({len(pending)}) ===")
-        for t in pending:
+    if legal_pending:
+        print(f"\n=== Filled but unsettled ({len(legal_pending)}) ===")
+        for t in legal_pending:
             print(
                 f"  {t.placed_at[:19]} {t.city} {t.bucket_label} "
+                f"{t.n_contracts:.0f} @ {fmt_price(t.entry_price)} event={t.event_date}"
+            )
+
+    if stale_pending:
+        print(f"\n=== STALE POSITION - investigate ({len(stale_pending)}) ===")
+        for t in stale_pending:
+            print(
+                f"  *** STALE POSITION - investigate *** "
+                f"{t.placed_at[:19]} {t.city} {t.bucket_label} "
                 f"{t.n_contracts:.0f} @ {fmt_price(t.entry_price)} event={t.event_date}"
             )
 
@@ -1252,6 +1387,8 @@ def main() -> None:
     warnings.filterwarnings("ignore", category=FutureWarning)
 
     client = PolymarketClient()
+    print_morning_preflight(client)
+
     posted_all = load_posted_orders(ORDER_LOG_PATH)
     open_orders = fetch_open_orders(client)
     open_ids = {_order_id(o) for o in open_orders}

@@ -204,9 +204,11 @@ def filter_top_bets(
     return filtered[: bc.max_trades_per_day(config)]
 
 
-def flat_contracts(bankroll: float, config: dict) -> int:  # noqa: ARG001
-    n_contracts = int(config.get("n_contracts_default", 5))
-    assert n_contracts == 5, f"Polymarket minimum order size is 5 contracts, got {n_contracts}"
+def flat_contracts(bankroll: float, config: dict, entry_price: float) -> int:  # noqa: ARG001
+    from src.sizing import assert_poly_order_notional, poly_contracts_for_price
+
+    n_contracts = poly_contracts_for_price(entry_price)
+    assert_poly_order_notional(n_contracts, entry_price)
     return n_contracts
 
 
@@ -426,11 +428,10 @@ def run_flat_variant(
             record_day_residuals(day_rows, raw_mu, bias_cache, wu, wu_bias, date_str)
             continue
 
-        n_contracts = flat_contracts(bankroll, config)
-        assert n_contracts == 5
         day_pnl = 0.0
         day_spent = 0.0
         for bet in bets:
+            n_contracts = flat_contracts(bankroll, config, bet.cost)
             trade_cost = n_contracts * bet.cost
             if day_spent + trade_cost > budget:
                 continue

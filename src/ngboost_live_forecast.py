@@ -184,21 +184,33 @@ def ensure_wu_current(city: str, event_date: str) -> bool:
     return True
 
 
+FEATURE_FAIL_REASONS: dict[tuple[str, str], str] = {}
+
+
+def last_feature_fail_reason(city: str, event_date: str) -> str | None:
+    return FEATURE_FAIL_REASONS.get((city, event_date))
+
+
 def build_live_features(city: str, event_date: str) -> pd.DataFrame | None:
     """Build feature vector for live prediction."""
+    key = (city, event_date)
     if city not in ng.STATION_META:
+        FEATURE_FAIL_REASONS[key] = "station_meta: city not in STATION_META"
         return None
 
     if not ensure_hrrr(city, event_date):
+        FEATURE_FAIL_REASONS[key] = "HRRR: unavailable for event date"
         print(f"  {city}: HRRR unavailable for {event_date}")
         return None
 
     if not ensure_wu_current(city, event_date):
+        FEATURE_FAIL_REASONS[key] = "WU: history incomplete after backfill attempt"
         print(f"  {city}: WU history incomplete")
 
     hrrr = ng.load_hrrr_city(city)
     hrrr["date"] = pd.to_datetime(hrrr["date"]).dt.strftime("%Y-%m-%d")
     if event_date not in set(hrrr["date"]):
+        FEATURE_FAIL_REASONS[key] = f"HRRR: no row for {event_date}"
         print(f"  {city}: no HRRR row for {event_date}")
         return None
 
@@ -229,6 +241,7 @@ def build_live_features(city: str, event_date: str) -> pd.DataFrame | None:
 
     required_lags = [wu_on(d1), wu_on(d2)]
     if any(not np.isfinite(v) for v in required_lags):
+        FEATURE_FAIL_REASONS[key] = f"WU: missing lags for {d1} or {d2}"
         print(f"  {city}: missing WU lags for {d1} or {d2}")
         return None
 
@@ -240,9 +253,11 @@ def build_live_features(city: str, event_date: str) -> pd.DataFrame | None:
             om = ng.fetch_openmeteo_tmax(city, meta, target_dt, target_dt)
 
     if asos.empty:
+        FEATURE_FAIL_REASONS[key] = "ASOS: no early-morning data"
         print(f"  {city}: no ASOS early morning data")
         return None
     if om.empty:
+        FEATURE_FAIL_REASONS[key] = "Open-Meteo: unavailable"
         print(f"  {city}: no OpenMeteo data")
         return None
 
@@ -266,6 +281,7 @@ def build_live_features(city: str, event_date: str) -> pd.DataFrame | None:
         "doy_sin": float(np.sin(2 * np.pi * doy / 365.25)),
         "doy_cos": float(np.cos(2 * np.pi * doy / 365.25)),
     }
+    FEATURE_FAIL_REASONS.pop(key, None)
     return pd.DataFrame([feat])
 
 

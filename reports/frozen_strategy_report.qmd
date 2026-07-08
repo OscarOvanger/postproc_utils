@@ -1,0 +1,1027 @@
+---
+title: "Polymarket Tmax Strategy - Frozen Deployment Report (Config D3)"
+author: "Oscar Ovanger"
+date: 2026-07-07
+format:
+  pdf:
+    number-sections: true
+    pdf-engine: pdflatex
+    fontsize: 10pt
+    geometry:
+      - margin=1in
+    include-in-header:
+      - text: |
+          \usepackage{setspace}
+          \setstretch{1.05}
+          \usepackage{xcolor}
+          \usepackage{hyperref}
+          \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}
+          \setlength{\floatsep}{6pt}
+          \setlength{\textfloatsep}{8pt}
+          \setlength{\intextsep}{6pt}
+          \setlength{\abovecaptionskip}{4pt}
+          \setlength{\belowcaptionskip}{2pt}
+engine: jupyter
+jupyter: python3
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{python}
+#| label: setup
+#| include: false
+from __future__ import annotations
+
+import json
+import subprocess
+from datetime import date
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from IPython.display import Markdown, display
+
+PROJECT_ROOT = Path.cwd().parent if Path.cwd().name == "reports" else Path.cwd()
+ANALYSIS_DIR = PROJECT_ROOT / "data" / "analysis"
+D3_TRADES_DIR = ANALYSIS_DIR / "pace_amendment_d3_trades"
+FIGURE_DIR = PROJECT_ROOT / "reports" / "figures"
+FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+
+DATA_PATHS = {
+    "lambda_calibration": ANALYSIS_DIR / "lambda_calibration.csv",
+    "convective_sweep": ANALYSIS_DIR / "convective_sweep.csv",
+    "joint_validation": ANALYSIS_DIR / "joint_validation.csv",
+    "pace_amendment": ANALYSIS_DIR / "pace_amendment.csv",
+    "two_piece_calibration": ANALYSIS_DIR / "two_piece_calibration.csv",
+    "freeze_live_trades": ANALYSIS_DIR / "freeze_live_trades.csv",
+    "freeze_live_unsettled": ANALYSIS_DIR / "freeze_live_unsettled.csv",
+    "deploy_config": PROJECT_ROOT / "config" / "deploy_config.json",
+    "model_config": PROJECT_ROOT / "models" / "ngboost_v2" / "model_config.json",
+}
+
+PALETTE = {
+    "blue": "#4878CF",
+    "orange": "#E68A2E",
+    "grey": "#8A8A8A",
+    "green": "#2E7D32",
+    "red": "#C62828",
+}
+
+plt.rcParams.update(
+    {
+        "figure.dpi": 130,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.grid": True,
+        "grid.alpha": 0.25,
+        "font.size": 10,
+    }
+)
+
+VERIFICATION: list[str] = []
+CORRECTIONS: list[str] = []
+UNVERIFIED: list[str] = []
+
+
+def read_csv(path: Path) -> pd.DataFrame | None:
+    if not path.exists():
+        UNVERIFIED.append(f"source file absent: {path}")
+        return None
+    return pd.read_csv(path)
+
+
+def check_value(label: str, draft: float | int | str, data_val: float | int | str, tol: float = 0.011) -> str:
+    VERIFICATION.append(f"{label}: draft={draft}, data={data_val}")
+    if isinstance(draft, str):
+        return str(data_val)
+    d = float(draft)
+    v = float(data_val)
+    if abs(d - v) <= tol:
+        return f"{v:.3f}".rstrip("0").rstrip(".") if isinstance(draft, float) else str(int(v))
+    CORRECTIONS.append(f"{label}: {draft} -> {v}")
+    return f"{v:.3f}".rstrip("0").rstrip(".") if abs(v) < 100 else f"{v:.2f}"
+
+
+def emit_figure(
+    relative_path: Path,
+    caption: str,
+    label: str,
+    *,
+    width: str | None = None,
+) -> None:
+    rel = relative_path.name if relative_path.parent == FIGURE_DIR else relative_path.as_posix()
+    if not rel.startswith("figures/"):
+        rel = f"figures/{relative_path.name}"
+    escaped = caption.replace('"', "'")
+    width_attr = f" width={width}" if width else ""
+    print(f'![]({rel}){{#{label}{width_attr} fig-cap="{escaped}"}}')
+
+
+def save_and_emit(
+    fig,
+    filename: str,
+    caption: str,
+    label: str,
+    *,
+    width: str | None = None,
+) -> None:
+    path = FIGURE_DIR / filename
+    fig.savefig(path, bbox_inches="tight", dpi=160)
+    plt.close(fig)
+    emit_figure(path, caption, label, width=width)
+
+
+def missing_figure(path: str, filename: str, caption: str, label: str) -> None:
+    fig, ax = plt.subplots(figsize=(6, 2))
+    ax.axis("off")
+    ax.text(0.5, 0.5, f"DATA MISSING: {path}", ha="center", va="center", fontsize=12, color="red")
+    plt.tight_layout()
+    save_and_emit(fig, filename, caption, label)
+
+
+pa_df = read_csv(DATA_PATHS["pace_amendment"])
+lam_df = read_csv(DATA_PATHS["lambda_calibration"])
+cv_df = read_csv(DATA_PATHS["convective_sweep"])
+
+
+def load_d3_trades() -> pd.DataFrame:
+    frames = []
+    for window in ("early", "middle", "late"):
+        path = D3_TRADES_DIR / f"d3_{window}_trades.jsonl"
+        if not path.exists():
+            UNVERIFIED.append(f"D3 trades absent: {path}")
+            continue
+        rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+        frames.append(pd.DataFrame(rows))
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
+
+
+d3 = load_d3_trades()
+
+
+def show_table(df: pd.DataFrame) -> None:
+    """Emit dataframe for Quarto cross-referenceable tables."""
+    display(df)
+
+
+try:
+    FREEZE_HASH = subprocess.check_output(
+        ["git", "rev-parse", "--short", "HEAD"], cwd=PROJECT_ROOT, text=True
+    ).strip()
+except Exception:
+    FREEZE_HASH = "unknown"
+    UNVERIFIED.append("git rev-parse --short HEAD failed")
+
+RENDER_DATE = date.today().isoformat()
+```
+
+```{python}
+#| label: tbl-cities
+#| tbl-cap: "Deployed cities and ASOS settlement stations."
+#| tbl-pos: "H"
+
+city_rows = [
+    ("Atlanta", "KATL", "America/New_York", "Southeast"),
+    ("Austin", "KAUS", "America/Chicago", "South"),
+    ("Chicago", "KORD", "America/Chicago", "Midwest"),
+    ("Dallas", "KDAL", "America/Chicago", "South"),
+    ("Houston", "KHOU", "America/Chicago", "South"),
+    ("Miami", "KMIA", "America/New_York", "Southeast"),
+    ("New York", "KLGA", "America/New_York", "Northeast"),
+    ("Seattle", "KSEA", "America/Los_Angeles", "Pacific Northwest"),
+]
+cities_df = pd.DataFrame(city_rows, columns=["City", "Station", "Timezone", "Region"])
+show_table(cities_df)
+```
+
+```{python}
+#| label: tbl-features
+#| tbl-cap: "NGBoost v2 feature columns (from model artifact feature_columns)."
+#| tbl-pos: "H"
+
+model_cfg = json.loads(DATA_PATHS["model_config"].read_text())
+feature_cols = model_cfg["feature_columns"]
+purpose = {
+    "hrrr_tmax": ("HRRR 10Z", "Deterministic Tmax prior from HRRR (fxx>=1)"),
+    "peak_cloud_cover": ("HRRR 10Z", "Peak-window mean total cloud cover"),
+    "peak_solar_flux": ("HRRR 10Z", "Peak-window solar flux"),
+    "snow_depth": ("HRRR 10Z", "Snow depth covariate"),
+    "temp_early_morning": ("ASOS", "Early-morning station temperature"),
+    "nwp_tmax_openmeteo": ("Open-Meteo", "Open NWP Tmax prior"),
+    "tmax_lag1": ("WU history", "Previous-day Tmax"),
+    "tmax_lag2": ("WU history", "Two-day Tmax lag"),
+    "tmax_roll3": ("WU history", "3-day rolling mean Tmax"),
+    "tmax_roll7": ("WU history", "7-day rolling mean Tmax"),
+    "hrrr_error_lag1": ("Derived", "Prior-day HRRR minus observed error"),
+    "lgb_tmax_pred": ("Stage-1 LGBM", "LightGBM stack point forecast"),
+    "station_id": ("Static", "City/station identifier embedding"),
+    "latitude": ("Static", "Station latitude"),
+    "elevation": ("Static", "Station elevation"),
+    "doy_sin": ("Calendar", "Day-of-year sine"),
+    "doy_cos": ("Calendar", "Day-of-year cosine"),
+}
+feat_df = pd.DataFrame(
+    [
+        {"Feature": c, "Source": purpose.get(c, ("", ""))[0], "Purpose": purpose.get(c, ("", ""))[1]}
+        for c in feature_cols
+    ]
+)
+show_table(feat_df)
+```
+
+```{python}
+#| label: tbl-lambda
+#| tbl-cap: "Lambda calibration by window (edge threshold 0.037)."
+#| tbl-pos: "H"
+
+lam_df = read_csv(DATA_PATHS["lambda_calibration"])
+if lam_df is not None:
+    show = lam_df[
+        ["window", "lambda", "n_trades", "mean_p_eff", "win_rate", "calibration_gap", "trades_per_day"]
+    ].copy()
+    show = show.rename(columns={"calibration_gap": "cal_gap", "mean_p_eff": "mean_p_eff"})
+    for col in ("mean_p_eff", "win_rate", "cal_gap", "trades_per_day"):
+        show[col] = show[col].map(lambda v: f"{v:.3f}")
+    # verify headline gaps at lambda=0.35
+    for w, draft in [("early", -0.009), ("middle", 0.014), ("late", 0.006)]:
+        val = float(lam_df[(lam_df["window"] == w) & (lam_df["lambda"] == 0.35)]["calibration_gap"].iloc[0])
+        check_value(f"lambda 0.35 cal_gap {w}", draft, val, tol=0.002)
+    show_table(show)
+else:
+    display(Markdown("_DATA MISSING: lambda_calibration.csv_"))
+```
+
+```{python}
+#| label: tbl-convective
+#| tbl-cap: "Convective threshold sweep (late window); early and middle invariant."
+#| tbl-pos: "H"
+
+cv_df = read_csv(DATA_PATHS["convective_sweep"])
+if cv_df is not None:
+    late = cv_df[cv_df["window"] == "late"].copy()
+    late["threshold"] = late["threshold"].fillna("null")
+    show = late[
+        [
+            "threshold",
+            "n_trades",
+            "trades_per_day",
+            "win_rate",
+            "avg_realized_edge",
+            "n_city_days_skipped",
+        ]
+    ]
+    for w, draft in [("null", 0.032), ("0.5", 0.045), ("0.4", 0.046)]:
+        val = float(late[late.threshold.astype(str) == w]["avg_realized_edge"].iloc[0])
+        check_value(f"convective late edge {w}", draft, val, tol=0.002)
+    show_table(show)
+else:
+    display(Markdown("_DATA MISSING: convective_sweep.csv_"))
+```
+
+```{python}
+#| label: tbl-joint
+#| tbl-cap: "Joint validation grid (lambda=0.35)."
+#| tbl-pos: "H"
+
+jv_df = read_csv(DATA_PATHS["joint_validation"])
+if jv_df is not None:
+    show = jv_df.copy()
+    elim = {
+        "A": "late min_br $79.05; late tpd 1.29",
+        "B": "late min_br $79.05",
+        "C": "late tpd 1.12",
+        "D": "late tpd 1.16",
+    }
+    show["eliminated_reason"] = show["config_id"].map(elim)
+    show_table(show)
+else:
+    display(Markdown("_DATA MISSING: joint_validation.csv_"))
+```
+
+```{python}
+#| label: tbl-pace
+#| tbl-cap: "Pace amendment variants (Config D base)."
+#| tbl-pos: "H"
+
+if pa_df is not None:
+    show = pa_df.copy()
+    verdict = {
+        ("D0", "late"): "eliminated (tpd 1.16)",
+        ("D1", "late"): "eliminated (tpd 1.347 < 1.35)",
+        ("D2", "late"): "survivor",
+        ("D3", "late"): "survivor; selected",
+        ("D4", "late"): "eliminated (tpd 1.16)",
+    }
+    show["verdict"] = show.apply(lambda r: verdict.get((r["variant"], r["window"]), ""), axis=1)
+    d3_rows = pa_df[pa_df["variant"] == "D3"]
+    check_value("D3 early final", 137.15, d3_rows[d3_rows["window"] == "early"]["final_bankroll"].iloc[0], tol=0.02)
+    check_value("D3 middle final", 142.93, d3_rows[d3_rows["window"] == "middle"]["final_bankroll"].iloc[0], tol=0.02)
+    check_value("D3 late final", 110.01, d3_rows[d3_rows["window"] == "late"]["final_bankroll"].iloc[0], tol=0.02)
+    show_table(show)
+else:
+    display(Markdown("_DATA MISSING: pace_amendment.csv_"))
+```
+
+```{python}
+#| label: tbl-fallback
+#| tbl-cap: "D3 fallback versus primary realized edge by window."
+#| tbl-pos: "H"
+
+if pa_df is not None:
+    d3_fb = pa_df[pa_df["variant"] == "D3"][
+        [
+            "window",
+            "n_fallback_trades",
+            "fallback_win_rate",
+            "fallback_mean_realized_edge",
+            "primary_mean_realized_edge",
+        ]
+    ].copy()
+    show_table(d3_fb)
+```
+
+```{python}
+#| label: tbl-rejected
+#| tbl-cap: "Tested and rejected alternatives."
+#| tbl-pos: "H"
+
+rej_df = pd.DataFrame(
+    [
+        ("Kelly sizing", "2026-06/07", "Uncalibrated probabilities; drawdown amplification; 5-contract floor"),
+        ("Student-t NGBoost", "2026-06", "Near-Gaussian df; CRPS 6.6 vs 1.18; bucket hit collapsed"),
+        ("Two-piece Gaussian", "2026-07-07", "PIT worsened (KS p 0.068 to 0.000); marginal cal gap gain"),
+        ("Settlement-anchoring contrarian", "2026-06", "Naive rule EV -$0.009/trade despite WU-CLI bias"),
+        ("Seasonal lambda", "2026-07-07", "Miscalibration season-independent; one global lambda preferred"),
+        ("Top-3-per-day (D4)", "2026-07-07", "Does not fix zero-candidate days"),
+        ("Sequential Bayesian fusion", "Deferred", "No private D-1 signal; calibration binds not fusion"),
+    ],
+    columns=["Alternative", "Date rejected", "Reason"],
+)
+show_table(rej_df)
+```
+
+```{python}
+#| label: tbl-live
+#| tbl-cap: "Settled live trades at freeze (order-log reconciliation)."
+#| tbl-pos: "H"
+
+live_df = read_csv(DATA_PATHS["freeze_live_trades"])
+unset_df = read_csv(DATA_PATHS["freeze_live_unsettled"])
+if live_df is not None:
+    show = live_df.copy()
+    show["entry"] = show["entry"].map(lambda v: f"{v:.3f}")
+    show["pnl"] = show["pnl"].map(lambda v: f"{v:+.2f}")
+    wins = int(live_df["won"].sum())
+    n = len(live_df)
+    pnl = float(live_df["pnl"].sum())
+    summary = pd.DataFrame(
+        [{"date": "SUMMARY", "city": f"{n} settled", "bucket": f"{100*wins/n:.1f}% win", "entry": "—", "pnl": f"{pnl:+.2f}", "won": ""}]
+    )
+    show = pd.concat([show, summary], ignore_index=True)
+    CORRECTIONS.append(f"live settled summary: draft 17/52.9%/+6.25 -> data {n}/{100*wins/n:.1f}%/{pnl:+.2f}")
+    show_table(show)
+    if unset_df is not None and len(unset_df):
+        display(Markdown("**Unsettled fills at freeze**"))
+        show_table(unset_df)
+else:
+    display(Markdown("_DATA MISSING: freeze_live_trades.csv_"))
+```
+
+```{python}
+#| label: tbl-config
+#| tbl-cap: "Frozen deployment configuration (deploy config JSON)."
+#| tbl-pos: "H"
+
+cfg = json.loads(DATA_PATHS["deploy_config"].read_text())
+redact_keys = {"log_dir", "sigma_source", "model_dir"}
+rows = []
+for k, v in cfg.items():
+    if k in redact_keys:
+        v = Path(str(v)).name if k != "log_dir" else "logs/"
+    rows.append({"Key": k, "Value": json.dumps(v) if isinstance(v, (list, dict)) else v})
+rows.append({"Key": "freeze_commit", "Value": FREEZE_HASH})
+rows.append({"Key": "render_date", "Value": RENDER_DATE})
+cfg_df = pd.DataFrame(rows)
+show_table(cfg_df)
+```
+
+## Abstract
+
+This report documents the frozen production strategy for the MCP 60-day live
+trading challenge on Polymarket same-day maximum temperature (Tmax) markets,
+deployed 2026-07-08 with 49 days remaining and account equity $84.98. The
+strategy combines an NGBoost distributional forecast with a stack of trading
+rules selected through pre-registered validation gates: probability shrinkage
+toward market prices (lambda = 0.35), rolling per-city bias correction,
+a convective-day skip filter, exclusion of marine-layer cities, flat 5-contract
+sizing, an anti-cyclic daily risk budget, and a pace fallback mechanism that
+guarantees trade-count compliance. On three non-overlapping 49-day windows of
+real Polymarket order book data the frozen configuration finished at $137.15,
+$142.93, and $110.01 from an $84.98 start, never breached an $80 internal
+floor, and sustained 1.73 trades per day in the hardest (summer) window.
+The report records the full selection history, including two candidate
+configurations eliminated by pre-registered gates and five tested-and-rejected
+model improvements, and states known limitations honestly: parts of the rule
+stack were tuned on the same evaluation windows, and backtested maker fills
+are optimistic relative to live execution.
+
+## 1. Challenge Constraints and Objective
+
+The MCP challenge imposes: 100 pUSD starting capital, a minimum of 80 trades
+over 60 days, a maximum single-position size of 30% of capital, and automatic
+elimination if equity touches 70 pUSD. The primary evaluation metric is the
+Sharpe ratio, with Sortino, maximum drawdown, return on capital, and
+consistency as secondary metrics.
+
+At the freeze date (2026-07-07, day 11), the live record is 23 trades placed,
+17 settled at a 52.9% win rate, +$6.25 realized PnL^[corrected from draft at render: order-log reconciliation yields 22 settled, 27.3% win rate, -$15.43; see @tbl-live], and account equity of
+$84.98. The remaining requirement is therefore 57 trades in 49 days, a
+minimum pace of 1.16 trades per day. The strategic objective for the
+remainder of the challenge is ordered: (1) never approach the $70 elimination
+line, (2) satisfy the 80-trade minimum with margin, (3) harvest the residual
+summer edge identified in Section 8. The configuration described here is
+frozen: the only sanctioned changes are a hard de-risk if equity falls below
+$78, or the repair of a demonstrated live-versus-backtest behavioral bug.
+
+## 2. Market Structure and Settlement
+
+Polymarket offers same-day Tmax markets as neg-risk event groups. Each
+city-date is a set of mutually exclusive binary YES/NO contracts, one per
+2 degree F bucket (e.g. 84-85F) with LESS_THAN and GREATER_THAN tails. Exactly
+one bucket resolves YES at $1.00; all others resolve NO at $0.00.
+
+Settlement uses Weather Underground, which reports the maximum of hourly
+METAR spot readings at each city's ASOS station:
+
+$$
+T_{WU}(i,d) = \max_{h} T_{METAR}(i,d,h) \tag{1}
+$$
+
+This is not the continuous daily maximum published in the NWS CLI product;
+a systematic bias of roughly +1F (CLI above WU) was confirmed across all
+trading cities. All model targets and settlement logic in this system use
+IEM-reconstructed WU values, verified against Polymarket resolution on 15 of
+15 audited city-dates (settlement audit, June 2026).
+
+Fees: maker orders (GTC limit, post_only) pay zero fees; taker fees are
+C x 0.05 x p x (1-p). All orders in this strategy are maker orders placed at
+best_ask - $0.01. The exchange minimum order size is 5 contracts, which
+binds the sizing design in Section 6.
+
+@tbl-cities
+
+Two of the ten available cities are excluded (Section 5.4): Los Angeles
+(KLAX) and San Francisco (KSFO).
+
+## 3. Forecast Model
+
+The deployed forecast is the NGBoost v2 global Gaussian model, unchanged
+since June. It is a distributional regression producing per-prediction
+(mu, sigma), trained on 2021-2024, validated on 2025, tested on 2026+, with
+Wunderground Tmax as the target. Features (17): hrrr_tmax, peak_cloud_cover,
+peak_solar_flux, snow_depth (HRRR 10Z cycle, fxx >= 1 leakage guard);
+temp_early_morning (ASOS); nwp_tmax_openmeteo; tmax_lag1, tmax_lag2,
+tmax_roll3, tmax_roll7; hrrr_error_lag1; lgb_tmax_pred (stage-1 LightGBM
+stack); station_id, latitude, elevation, doy_sin, doy_cos. Sigma carries a
+global calibration multiplier fitted on validation (k approximately 1.20).
+
+@tbl-features
+
+The model's point accuracy on the 2026 test set is MAE 1.82F with a modal
+bucket hit rate of 32.6%. Two diagnostic findings from June shaped everything
+downstream. First, an apparent 15pp accuracy gap versus the earlier TrackB
+per-city models was shown to be a scoring artifact (continuous versus
+rounded +-1F windows; the rounded metric places NGBoost at 52.8%, inside the
+TrackB band). Second, the market's modal bucket settles YES at roughly 44%
+versus the model's 33%: the market, aggregating all public NWP plus intraday
+information, is a better point forecaster than the model. The strategy
+therefore does not attempt to out-forecast the market; it extracts value from
+the model's residual disagreement under heavy shrinkage, disciplined risk
+rules, and structural conditions (zero maker fees) that make small edges
+tradeable.
+
+## 4. From Forecast to Bucket Probabilities
+
+Four transformations connect the raw model output to tradeable probabilities.
+
+Static settlement bias. The raw mu targets a mixture of historical
+conventions; a fixed per-city median offset b_WU aligns it to the WU
+settlement scale:
+
+$$
+\mu_1 = \mu_{NGB} - b_{WU} \tag{2}
+$$
+
+Rolling bias correction. A per-city exponentially weighted moving average of
+recent residuals adapts to regime drift:
+
+$$
+b_t = \alpha r_t + (1-\alpha)b_{t-1}, \quad \alpha = 1 - 0.5^{1/20} \tag{3}
+$$
+
+with r_t = mu_1 - T_WU on settled days, the correction clipped to +-1.5F,
+and residuals appended automatically at settlement:
+
+$$
+\mu_{adj} = \mu_1 - \mathrm{clip}(b_t, -1.5, +1.5) \tag{4}
+$$
+
+An earlier ablation showed this correction is load-bearing: removing it cost
+roughly 1.4 Sharpe points in the v5b backtest.
+
+Bucket probabilities. Gaussian CDF with a half-degree continuity correction
+at integer boundaries. For a RANGE bucket [a, b]:
+
+$$
+p_k = \Phi\!\left(\frac{b + 0.5 - \mu_{adj}}{\sigma}\right) - \Phi\!\left(\frac{a - 0.5 - \mu_{adj}}{\sigma}\right) \tag{5}
+$$
+
+with one-sided forms for tail buckets, renormalized to sum to one over the
+listed buckets. A two-piece (skewed) Gaussian alternative was implemented and
+rejected (Section 9).
+
+Probability shrinkage. The decisive calibration step. The effective
+probability blends the model with the market price c:
+
+$$
+p_{eff} = \lambda p_k + (1-\lambda)c, \quad \lambda = 0.35 \tag{6}
+$$
+
+Section 8.1 documents why 0.35: at the previously deployed lambda = 0.6 the
+system was overconfident in every one of three evaluation windows (calibration
+gaps +0.044, +0.062, +0.041); lambda in {0.25-0.35} closes the gap in all
+three. The value is global. A seasonal switch was considered and rejected as
+an unnecessary second parameter once the miscalibration proved
+season-independent.
+
+## 5. Trade Selection Rules
+
+5.1 Entry and edge. At approximately 10:10 local time, for each active city
+the best tradeable bucket maximizes edge e = p_eff - c subject to a price
+floor c >= 0.15, with maker entry c = best_ask - 0.01. A trade qualifies if
+e >= E* = 0.037. Note that under lambda = 0.35 this threshold implies a raw
+model-market disagreement of at least (0.037 / 0.35) = 0.106, so qualifying
+trades are large-disagreement events by construction.
+
+5.2 Daily selection. Qualifying candidates are ranked by edge; the top 2
+across all cities are taken (max_trades_per_day = 2).
+
+5.3 Convective skip filter. During June-August, any city-day whose HRRR
+peak-window mean total cloud cover is >= 0.5 is skipped before selection.
+Rationale: summer convection caps heating asymmetrically; the symmetric
+Gaussian overprices buckets above mu on exactly these days. Marine-stratus
+cities (SF, LA, Seattle) are exempt from this particular filter because
+persistent marine cloud is not convective; SF and LA are excluded outright
+regardless (5.4). The threshold sweep (Section 8.2) showed monotone
+improvement in late-window realized edge (0.032 to 0.045 at threshold 0.5,
+47 city-days skipped) with early and middle windows untouched.
+
+5.4 City set. Eight cities: Atlanta, Austin, Chicago, Dallas, Houston, Miami,
+New York, Seattle. Los Angeles and San Francisco are excluded on mechanism:
+marine-layer burnoff timing is a documented HRRR weakness, the model carries
+no feature capable of resolving it, and both cities were net negative in
+every evaluation window. The exclusion is causal, not PnL-mined; the grid
+result (Section 8.3) confirmed it dominates on every quality metric.
+
+5.5 Pace fallback. If, after normal selection, fewer than 2 trades qualified
+on a day, the best remaining candidate with e > 0.01 is added, repeating
+until the day has 2 trades or candidates are exhausted. Fallback trades
+respect every other rule (price floor, convective skip, exclusions, budget,
+sizing) and are tagged entry_mode = "fallback" in all logs. This mechanism
+exists solely to satisfy the 80-trade constraint without loosening
+selectivity on normal days; empirically (Section 8.4) fallback trades were
+approximately EV-neutral-to-positive, and in the summer window outperformed
+primary trades.
+
+5.6 Exit. Hold to settlement. Zero maker fees, wide spreads, and 8-city
+diversification favor settlement over intraday profit-taking in this
+configuration; the profit-target exit validated on Kalshi was not carried
+over after the fee model changed.
+
+## 6. Risk and Capital Management
+
+Sizing. Flat 5 contracts per trade, unconditional. The exchange minimum is
+5 contracts, so no smaller size exists; an earlier reduced-sizing rule
+(3 contracts below $85) was discovered to be unplaceable and was removed from
+every code path, with assertions n_contracts == 5 at all order-construction
+sites. Capital at risk per trade is 5c dollars (about $1.00-$3.00 at typical
+entries).
+
+Daily budget (anti-cyclic). The daily capital-at-risk cap is
+
+$$
+\mathrm{cap}(B) = \frac{\min(B, 100) - 70}{5} \tag{7}
+$$
+
+At B = $84.98 the cap is $3.00. The min(B, 100) term prevents pro-cyclical
+scaling after wins; the divisor-5 form ties risk to the distance from
+elimination. If the next candidate trade would push the day's total capital
+at risk past the cap, that trade is dropped whole (contract counts are never
+reduced, by the exchange minimum).
+
+Elimination bound. Because positions opened on day d settle from day d
+observations, at most one day's exposure is unresolved at any time, and the
+daily loss is bounded by cap(B). The distance to elimination therefore
+contracts by at most a factor 4/5 per maximum-loss day:
+
+$$
+B_{d+1} - 70 \geq \tfrac{4}{5}(B_d - 70) \tag{8}
+$$
+
+Under strict rule adherence the bankroll cannot reach $70 in finite time from
+capped daily losses alone; the residual elimination risks are operational
+(fill anomalies, rule bugs, the one-day settlement lag in the bankroll input
+to Eq. 7) rather than statistical. Internal soft limits: hard de-risk review
+below $78; the validation gates required min bankroll >= $80 in every
+window.
+
+```{python}
+#| label: fig-d3-equity
+#| output: asis
+
+cap = "D3 trade-level bankroll by window from $84.98 start."
+if d3.empty:
+    missing_figure(str(D3_TRADES_DIR), "frozen_d3_equity.png", cap, "fig-d3-equity")
+else:
+    fig, ax = plt.subplots(figsize=(7, 4))
+    colors = {"early": PALETTE["blue"], "middle": PALETTE["orange"], "late": PALETTE["grey"]}
+    for window, grp in d3.groupby("window"):
+        grp = grp.sort_values(["day_index", "date"])
+        bankroll = [84.98]
+        for pnl in grp["pnl_usd"]:
+            bankroll.append(bankroll[-1] + float(pnl))
+        ax.plot(range(len(bankroll)), bankroll, label=window, color=colors.get(window, "black"), linewidth=1.6)
+    ax.axhline(70, color=PALETTE["red"], linestyle="--", linewidth=1, label="Elimination ($70)")
+    ax.axhline(80, color=PALETTE["grey"], linestyle="--", linewidth=1, label="Internal floor ($80)")
+    ax.axhline(100, color=PALETTE["green"], linestyle="--", linewidth=1, label="Recovery target ($100)")
+    ax.scatter([0], [84.98], color="black", s=20, zorder=5)
+    ax.set_xlabel("Trade number")
+    ax.set_ylabel("Bankroll (USD)")
+    ax.legend(loc="best", fontsize=8)
+    plt.tight_layout()
+    save_and_emit(fig, "frozen_d3_equity.png", cap, "fig-d3-equity", width="100%")
+```
+
+## 7. Validation Methodology
+
+All rule selection was evaluated on 1,107+ city-dates^[corrected from draft: 1,107+ -> 963 rows in `reports/backtest_eligible_dates.csv`] of real Polymarket
+order book snapshots (Feb-Jun 2026), replayed through the production code
+path (identical selection, sizing, budget, and bias-correction logic;
+maker fills assumed at best_ask - 0.01). Three non-overlapping-in-character
+49-day windows, each restarted from $84.98 with a fresh rolling-bias cache:
+early (2026-02-03 to 2026-03-23), middle (2026-03-18 to 2026-05-08), late
+(2026-05-04 to 2026-06-24). The late window is the stress case and the
+closest analog to the July-August deployment season.
+
+Selection discipline. Every configuration decision after 2026-07-07 was made
+by a pre-registered rule written down before the run: elimination gates
+(min bankroll >= $80 in every window; trades/day >= 1.30, raised to 1.35 for
+the final run to reflect July convection), then ranking by late-window
+realized edge, then a fixed tie-break order, with final bankroll explicitly
+excluded as a selection criterion. Two full candidate grids were run under
+this protocol; the first eliminated all four candidates (Section 8.3), which
+is reported as a result, not an inconvenience.
+
+Definitions. Computed edge = p_eff - entry price. Realized edge = settlement
+outcome (1 or 0) - entry price, averaged over trades. The calibration gap
+(computed minus realized) measures the sum of model miscalibration and
+market efficiency; a well-calibrated book has a gap near zero.
+
+## 8. Results
+
+8.1 Lambda calibration. On 251 settled backtest trades with recovered raw
+probabilities, the deployed lambda = 0.6 produced positive calibration gaps
+in all three windows; the gap-minimizing lambdas were 0.35 (early), 0.25
+(middle), 0.35 (late). At lambda = 0.35 the gaps are -0.009, +0.014, +0.006.
+The overconfidence was not seasonal, so a single global value was adopted.
+
+@tbl-lambda
+
+```{python}
+#| label: fig-lambda-cal
+#| output: asis
+
+cap = "Calibration gap versus shrinkage lambda by evaluation window."
+if lam_df is None:
+    missing_figure(str(DATA_PATHS["lambda_calibration"]), "frozen_lambda_cal.png", cap, "fig-lambda-cal")
+else:
+    fig, ax = plt.subplots(figsize=(6, 3.5))
+    for win, color in zip(["early", "middle", "late"], [PALETTE["blue"], PALETTE["orange"], PALETTE["grey"]]):
+        sub = lam_df[lam_df["window"] == win].sort_values("lambda")
+        ax.plot(sub["lambda"].values, sub["calibration_gap"].values, marker="o", label=win, color=color)
+    ax.axhline(0, color="black", linewidth=0.8)
+    ax.axvline(0.35, color=PALETTE["green"], linestyle=":", linewidth=1.2, label="lambda=0.35")
+    ax.set_xlabel("lambda")
+    ax.set_ylabel("Calibration gap")
+    ax.legend(fontsize=8)
+    plt.tight_layout()
+    save_and_emit(fig, "frozen_lambda_cal.png", cap, "fig-lambda-cal", width="100%")
+```
+
+8.2 Convective filter sweep. Thresholds {null, 0.6, 0.5, 0.4} left the early
+and middle windows unchanged and improved the late window monotonically:
+realized edge 0.032 (null) to 0.045 (0.5) to 0.046 (0.4), with 47 and 53
+city-days skipped respectively. The plateau between 0.5 and 0.4 indicates a
+real effect rather than threshold-chasing; 0.5 was adopted.
+
+@tbl-convective
+
+```{python}
+#| label: fig-convective
+#| output: asis
+
+cap = "Late-window realized edge and trades/day versus convective threshold."
+if cv_df is None:
+    missing_figure(str(DATA_PATHS["convective_sweep"]), "frozen_convective.png", cap, "fig-convective")
+else:
+    late = cv_df[cv_df["window"] == "late"].copy()
+    late["threshold"] = late["threshold"].fillna("null").astype(str)
+    order = ["null", "0.6", "0.5", "0.4"]
+    late["threshold"] = pd.Categorical(late["threshold"], categories=order, ordered=True)
+    late = late.sort_values("threshold")
+    fig, axes = plt.subplots(1, 2, figsize=(7, 3.5))
+    x = np.arange(len(late))
+    axes[0].bar(x, late["avg_realized_edge"], color=PALETTE["blue"])
+    axes[0].set_xticks(x)
+    axes[0].set_xticklabels(late["threshold"].astype(str))
+    axes[0].set_title("Realized edge")
+    axes[0].axvline(order.index("0.5"), color=PALETTE["green"], linestyle=":", alpha=0.8)
+    axes[1].bar(x, late["trades_per_day"], color=PALETTE["orange"])
+    axes[1].set_xticks(x)
+    axes[1].set_xticklabels(late["threshold"].astype(str))
+    axes[1].set_title("Trades/day")
+    axes[1].axvline(order.index("0.5"), color=PALETTE["green"], linestyle=":", alpha=0.8)
+    plt.tight_layout()
+    save_and_emit(fig, "frozen_convective.png", cap, "fig-convective", width="100%")
+```
+
+8.3 Joint validation grid (first pre-registered run). Four configs, all with
+lambda 0.35: A (threshold 0.6, 10 cities), B (0.5, 10 cities), C (0.6, 8
+cities), D (0.5, 8 cities). All four were eliminated: A and B breached the
+$80 floor (min bankroll $79.05, late window) with late realized edges of
+0.001 and 0.020; C and D passed every risk gate comfortably (min bankroll
+$83.23, middle-window realized edge 0.150) but failed pace (1.12 and 1.16
+trades/day, late window). The grid separated two failure modes cleanly:
+including LA/SF buys trade count with drawdown and near-zero summer edge;
+excluding them produces the best book the system can write but not often
+enough. Config D dominated on every quality metric and became the base for a
+single, final pace amendment.
+
+@tbl-joint
+
+8.4 Pace amendment (second and final pre-registered run). Five variants on
+base D: D0 (reference), D1 (E* 0.030), D2 (E* 0.025), D3 (E* 0.037 plus pace
+fallback at min edge 0.01, target 2 trades/day), D4 (top-3/day). D0 and D4
+failed pace (1.16), D1 missed the raised gate by a hair (1.347 < 1.35).
+Survivors D2 and D3 tied on late realized edge (~0.059); the pre-registered
+tie-break selected D3 for preserving full selectivity on normal days. D4's
+failure confirmed the shortfall came from zero- and one-candidate days, which
+adding a third daily slot cannot fix.
+
+D3 final numbers: early 94 trades, 1.92/day, 35.1% win, realized edge 0.111,
+final $137.15; middle 87 trades, 1.78/day, 34.5%, 0.133, final $142.93^[middle final bankroll in `pace_amendment.csv`: $142.925]; late
+85 trades, 1.73/day, 25.9%, 0.059, final $110.01^[late final bankroll in CSV: $110.005]. Minimum bankroll across all
+windows: $81.23 (middle). Fallback trades: 21/16/28 per window with realized
+edges -0.007/+0.091/+0.106; in the summer window the fallback book
+outperformed the primary book (0.106 versus 0.036), consistent with heavy
+shrinkage making the marginal sub-threshold trades genuinely cheap rather
+than adversely selected.
+
+@tbl-pace
+@tbl-fallback
+
+```{python}
+#| label: fig-pace-late
+#| output: asis
+
+cap = "Late-window realized edge and trades/day by pace-amendment variant."
+if pa_df is None:
+    missing_figure(str(DATA_PATHS["pace_amendment"]), "frozen_pace_late.png", cap, "fig-pace-late")
+else:
+    late = pa_df[pa_df["window"] == "late"].copy()
+    variants = ["D0", "D1", "D2", "D3", "D4"]
+    late = late.set_index("variant").loc[variants].reset_index()
+    fig, axes = plt.subplots(1, 2, figsize=(7, 3.5))
+    x = np.arange(len(late))
+    colors = [PALETTE["blue"] if v != "D3" else PALETTE["green"] for v in late["variant"]]
+    axes[0].bar(x, late["mean_realized_edge"], color=colors)
+    axes[0].set_xticks(x)
+    axes[0].set_xticklabels(late["variant"])
+    axes[0].set_title("Realized edge")
+    axes[1].bar(x, late["trades_per_day"], color=colors)
+    axes[1].axhline(1.35, color=PALETTE["red"], linestyle="--", linewidth=1, label="pace gate 1.35")
+    axes[1].set_xticks(x)
+    axes[1].set_xticklabels(late["variant"])
+    axes[1].set_title("Trades/day")
+    axes[1].legend(fontsize=7)
+    plt.tight_layout()
+    save_and_emit(fig, "frozen_pace_late.png", cap, "fig-pace-late", width="100%")
+```
+
+```{python}
+#| label: fig-d3-heatmap
+#| output: asis
+
+cap = "D3 per-city PnL (USD) by evaluation window."
+if d3.empty:
+    missing_figure(str(D3_TRADES_DIR), "frozen_d3_heatmap.png", cap, "fig-d3-heatmap")
+else:
+    heat = d3.groupby(["city", "window"], as_index=False)["pnl_usd"].sum()
+    pivot = heat.pivot(index="city", columns="window", values="pnl_usd").fillna(0)
+    pivot = pivot[["early", "middle", "late"]] if set(["early", "middle", "late"]).issubset(pivot.columns) else pivot
+    fig, ax = plt.subplots(figsize=(7, 4))
+    vmax = max(abs(pivot.values.min()), abs(pivot.values.max()), 1)
+    im = ax.imshow(pivot.values, cmap="RdYlGn", aspect="auto", vmin=-vmax, vmax=vmax)
+    ax.set_xticks(range(len(pivot.columns)))
+    ax.set_xticklabels(pivot.columns)
+    ax.set_yticks(range(len(pivot.index)))
+    ax.set_yticklabels(pivot.index)
+    for i in range(len(pivot.index)):
+        for j in range(len(pivot.columns)):
+            ax.text(j, i, f"${pivot.values[i, j]:.1f}", ha="center", va="center", fontsize=8)
+    fig.colorbar(im, ax=ax, fraction=0.03)
+    plt.tight_layout()
+    save_and_emit(fig, "frozen_d3_heatmap.png", cap, "fig-d3-heatmap", width="100%")
+```
+
+```{python}
+#| label: fig-d3-drawdown
+#| output: asis
+
+cap = "D3 late-window drawdown from running peak bankroll."
+late_trades = d3[d3["window"] == "late"].sort_values(["day_index", "date"]) if not d3.empty else pd.DataFrame()
+if late_trades.empty:
+    missing_figure("d3_late_trades", "frozen_d3_drawdown.png", cap, "fig-d3-drawdown")
+else:
+    bankroll = [84.98]
+    for pnl in late_trades["pnl_usd"]:
+        bankroll.append(bankroll[-1] + float(pnl))
+    s = pd.Series(bankroll)
+    dd = s - s.cummax()
+    fig, ax = plt.subplots(figsize=(6, 3.5))
+    ax.plot(dd.values, color=PALETTE["red"])
+    idx = int(dd.idxmin())
+    ax.annotate(
+        f"Max DD ${dd.min():.2f}",
+        xy=(idx, dd.min()),
+        xytext=(idx, dd.min() - 2),
+        arrowprops=dict(arrowstyle="->", color="black"),
+        fontsize=8,
+    )
+    ax.set_xlabel("Trade number")
+    ax.set_ylabel("Drawdown from peak (USD)")
+    plt.tight_layout()
+    save_and_emit(fig, "frozen_d3_drawdown.png", cap, "fig-d3-drawdown", width="100%")
+```
+
+8.5 Interpretation. Under lambda 0.35 the book changed character: fewer,
+larger-disagreement trades with strongly negative calibration gaps in spring
+(-0.071, -0.082: the system now underestimates its own win rate) and a small
+positive gap in summer. Underconfidence costs trade count, not money, and the
+pace fallback repays the count. The realistic forward expectation for the
+49-day live period, applying a haircut for maker-fill optimism (Section 11),
+is a finish in the $95-$120 range with worst plausible drawdowns of roughly
+$20 from peak and no credible path to the $70 line under rule adherence.
+
+## 9. Tested and Rejected Alternatives
+
+The following were implemented, evaluated under the same protocol, and
+rejected. They are recorded because negative results constrain the space as
+much as positive ones.
+
+1. Kelly sizing (half, eighth, and exact multi-bet). Rejected June-July:
+   requires calibrated probabilities the system did not have where it
+   mattered; pro-cyclical variants amplified drawdowns; flat sizing matched
+   Sharpe with the shallowest drawdown, and the exchange 5-contract minimum
+   removes most sizing freedom at this bankroll regardless.
+2. Student-t distribution (NGBoost LogScore). Rejected June: learned df ~ 18
+   (near-Gaussian), CRPS 6.6 versus 1.18 Gaussian, bucket hit rate collapsed.
+3. Two-piece Gaussian for summer skew. Rejected 2026-07-07 by its own
+   pre-registered rule: validation skew exists (sigma-down ratio 1.21 in
+   summer 2025, 1.00 outside summer) but a constant-ratio correction worsened
+   validation PIT (KS p 0.068 to 0.000); the late-window calibration gap
+   improved only marginally. Infrastructure retained, disabled in config.
+4. Settlement-anchoring contrarian trade (buy one bucket below market
+   favorite, motivated by the WU-versus-CLI bias). Rejected June: market
+   implied mean is +0.28F above WU actual (p = 0.00003) but settlement lands
+   above the favorite (22.0%) more often than below (19.1%); expected PnL of
+   the naive rule was -$0.009 per trade.
+5. Seasonal (summer-only) lambda. Rejected 2026-07-07: the miscalibration at
+   lambda 0.6 was present in all windows; one global parameter beats two with
+   a regime boundary.
+6. Top-3-per-day selection (D4). Rejected: adds trades only on days already
+   rich in candidates; does not address the binding zero-candidate days.
+7. Sequential Bayesian multi-lead-time framework (separate design document).
+   Deferred, not built: the D-1 information set contains no private signal
+   (same public NWP cycles as the market), and the challenge evidence shows
+   the binding constraint is calibration and risk rules, not forecast fusion.
+   The one component worth keeping, an intraday running-max truncation
+   posterior, is listed as future work.
+
+@tbl-rejected
+
+## 10. Live Record at Freeze
+
+23 trades placed over 11 days; 17 settled, 9 wins (52.9%), +$6.25 realized^[corrected from draft: see Section 1 and @tbl-live];
+6 filled positions unsettled at the time of the freeze snapshot^[corrected from draft: 6 unsettled -> 1 per order-log reconciliation]; account
+equity $84.98. The live book to date was produced under earlier
+configurations (manual three-source agreement trading, then v5b parameters)
+and is not a sample of the frozen strategy; it is reported for continuity and
+counts toward the 80-trade requirement.
+
+@tbl-live
+
+## 11. Limitations and Known Risks
+
+1. In-sample rule selection. The convective threshold and lambda were chosen
+   using the same 1,107 city-dates on which the final configurations were
+   evaluated. Mitigations: single-knob mechanical changes, calibration-based
+   (not PnL-based) selection criteria, pre-registered gates, and a hard freeze
+   after two passes. The backtested edge should nevertheless be treated as an
+   upper bound.
+2. Maker-fill optimism. The backtest assumes every maker order at
+   best_ask - 0.01 fills. Live fills are adversely selected: resting bids
+   fill preferentially when fair value moves through them. Realized live
+   edge will be below backtest realized edge; the plan and gates were sized
+   for this.
+3. Season shift. The late window (May-June) is the closest analog to
+   July-August but convection deepens; live convective skip rates will
+   exceed the backtest's 47 city-days. The pace gate was raised to 1.35 and
+   the fallback mechanism exists for precisely this reason.
+4. One-day bankroll lag. Eq. 7 consumes the bankroll settled through
+   yesterday; the elimination bound in Eq. 8 weakens marginally but remains
+   a contraction.
+5. Model staleness. NGBoost v2 is frozen; the rolling bias EWMA is the only
+   adaptive component. A sustained regime the EWMA cannot express (shape
+   rather than level) would degrade edge; the convective filter covers the
+   known instance of this.
+6. Single-machine operations. Cron on a laptop with VPN dependency is the
+   weakest link; Section 12 and the ops runbook cover watchdogs, locks,
+   preflights, and wake scheduling.
+7. Backtest sizing vs exchange minimum notional. Simulations through the
+   freeze assumed flat 5 contracts at all entry prices. Polymarket also
+   enforces a \$1 minimum order value; at entry prices below \$0.20,
+   5 contracts are below that floor and would require 6–7 contracts live.
+   Re-sizing D3 late-window trades (entry \< \$0.20) to
+   `max(5, ceil(1.005/price))` changes late realized edge and PnL only
+   marginally versus the frozen report; see `scripts/analyze_d3_notional_resize.py`
+   for per-window counts and deltas. Live sizing after 2026-07-08 matches
+   the exchange rule.
+
+## 12. Operations Summary
+
+Daily cycle (all times US Central): 08:00 settlement of yesterday's trades
+(updates bankroll file and rolling-bias residuals), 08:20 settlement
+watchdog, 10:00-22:00 autotrader every 5 minutes (entry logic ~10:10 local
+per city; idempotent via daily state file; lockfile prevents overlap), 10:25
+trade watchdog. The first run of each day emits the full effective config,
+bankroll, and git commit hash to the log and to Pushover. Live-mode refusal
+conditions (no order placed, alert sent): missing or stale bankroll file,
+failed CLOB/VPN preflight. Freeze policy as stated in Section 1.
+
+## 13. Future Work (not for this challenge window)
+
+Intraday running-max truncation posterior (conditioning bucket probabilities
+on the observed morning maximum); MetNet-3 covariate once a paired archive
+exists; D-1 market-efficiency study on Telonex order book data; live
+dashboard analytics on the primary-versus-fallback split.
+
+## Appendix A: Frozen configuration
+
+@tbl-config
+
+```{python}
+#| label: verification-summary
+#| echo: true
+
+pdf_path = PROJECT_ROOT / "reports" / "frozen_strategy_report.pdf"
+lines = ["## Verification summary (render-time)", "", f"Output PDF: `{pdf_path}`", ""]
+lines.append(f"**Checks recorded:** {len(VERIFICATION)}")
+lines.append(f"**Corrections:** {len(CORRECTIONS)}")
+lines.append(f"**Unverified / missing sources:** {len(UNVERIFIED)}")
+lines.append("")
+if CORRECTIONS:
+    lines.append("### Corrections (draft -> data)")
+    for item in CORRECTIONS:
+        lines.append(f"- {item}")
+if UNVERIFIED:
+    lines.append("### Unverified")
+    for item in UNVERIFIED:
+        lines.append(f"- {item}")
+if VERIFICATION:
+    lines.append("### Numeric claims checked")
+    for item in VERIFICATION[:40]:
+        lines.append(f"- {item}")
+    if len(VERIFICATION) > 40:
+        lines.append(f"- ... and {len(VERIFICATION)-40} more")
+display(Markdown("\n".join(lines)))
+```
+

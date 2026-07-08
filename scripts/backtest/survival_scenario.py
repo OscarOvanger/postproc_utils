@@ -322,14 +322,17 @@ def settle_candidate(
     candidate: Candidate,
     date_str: str,
     wu: pd.DataFrame,
+    *,
+    n_contracts: int | None = None,
 ) -> dict[str, Any] | None:
     wu_row = wu[(wu["city"] == candidate.city) & (wu["date"] == date_str)]
     if wu_row.empty:
         return None
     actual = float(wu_row.iloc[0]["wunderground_tmax"])
     won = bc.temp_in_bucket(actual, candidate.bucket)
+    n = n_contracts if n_contracts is not None else N_CONTRACTS
     pnl = bc.settlement_pnl(
-        n_contracts=N_CONTRACTS,
+        n_contracts=n,
         entry_price=candidate.entry_price,
         won=won,
     )
@@ -469,12 +472,15 @@ def run_scenario(
             )
 
             for candidate, entry_mode in selected:
-                assert N_CONTRACTS == 5
-                trade_cost = N_CONTRACTS * candidate.entry_price
+                from src.sizing import assert_poly_order_notional, poly_contracts_for_price
+
+                n = poly_contracts_for_price(candidate.entry_price)
+                assert_poly_order_notional(n, candidate.entry_price)
+                trade_cost = n * candidate.entry_price
                 if day_spent + trade_cost > budget:
                     n_budget_dropped += 1
                     continue
-                settlement = settle_candidate(candidate, date_str, wu)
+                settlement = settle_candidate(candidate, date_str, wu, n_contracts=n)
                 if settlement is None:
                     continue
                 day_spent += trade_cost
@@ -488,7 +494,7 @@ def run_scenario(
                     "traded": True,
                     "entry_mode": entry_mode,
                     **asdict(candidate),
-                    "n_contracts": N_CONTRACTS,
+                    "n_contracts": n,
                     "cost_usd": round(trade_cost, 4),
                     "exit_type": "settlement",
                     "exit_price": settlement["exit_price"],
