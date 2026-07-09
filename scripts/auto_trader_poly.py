@@ -26,6 +26,33 @@ if str(SRC_DIR) not in sys.path:
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+
+def _load_dotenv(path: Path) -> None:
+    """Load KEY=VALUE pairs from .env into os.environ (setdefault; env wins)."""
+    if not path.is_file():
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if not key:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+_load_dotenv(PROJECT_ROOT / ".env")
+
 from src.poly_trading_pipeline import (  # noqa: E402
     DEFAULT_CONFIG_PATH,
     build_poly_config,
@@ -350,6 +377,15 @@ def place_live_entry_with_fresh_book(
             size=n_contracts,
             tick_size=str(trade.get("tick_size", "0.01")),
         )
+        # place_order may clamp price to stay post-only; trust submitted price.
+        submitted = _to_float(last_result.get("price"))
+        if submitted is not None:
+            maker_price = submitted
+            n_contracts = poly_contracts_for_price(float(maker_price))
+        if last_result.get("best_bid") is not None:
+            best_bid = _to_float(last_result.get("best_bid"))
+        if last_result.get("best_ask") is not None:
+            best_ask = _to_float(last_result.get("best_ask"))
         if last_result.get("status") in ("posted", "signed"):
             return last_result, float(maker_price), n_contracts, best_bid, best_ask
 
@@ -372,10 +408,11 @@ def place_maker_entry(
     tick_size: str = "0.01",
     neg_risk: bool = True,
 ) -> dict[str, Any]:
+    """Post a post-only YES BUY. place_order re-checks the book and clamps."""
     client = _get_poly_client()
     return client.place_order(
         token_id=token_id,
-        side="YES",
+        side="BUY",
         price=price,
         size=float(size),
         tick_size=tick_size,
@@ -1473,6 +1510,12 @@ def main() -> None:
     )
 
     state = load_state(date_str)
+    if state is not None and state.get("mode") == "paper" and args.mode == "live":
+        print(
+            f"  WARNING: discarding paper-mode state (phase={state.get('phase')}) "
+            f"for live run"
+        )
+        state = None
     if state is None:
         cities = (
             list(MODAL_MAKER_CITIES)

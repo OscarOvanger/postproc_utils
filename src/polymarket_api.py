@@ -927,9 +927,95 @@ class PolymarketClient:
             order_side = Side.SELL
         else:
             raise ValueError(f"Unknown order side: {side!r}")
+
+        submit_price = float(price)
+        tick = float(tick_size)
+        book_bid: float | None = None
+        book_ask: float | None = None
+        # Post-only must rest: re-check book immediately before sign/post.
+        # SDK does not complement neg-risk prices; crossings come from a
+        # stale ask (price becoming marketable between book fetch and submit).
+        if post_only:
+            book_bid, book_ask = self.get_best_bid_ask(token_id)
+            best_bid, best_ask = book_bid, book_ask
+            if order_side == Side.BUY and best_ask is not None:
+                max_resting = round(best_ask - tick, 4)
+                if submit_price >= best_ask:
+                    if max_resting <= 0:
+                        err = (
+                            f"post-only BUY would cross ask {best_ask} "
+                            f"at {submit_price}"
+                        )
+                        record = {
+                            "timestamp": datetime.now().isoformat(),
+                            "token_id": token_id,
+                            "side": side.upper(),
+                            "price": submit_price,
+                            "size": size,
+                            "tick_size": tick_size,
+                            "neg_risk": neg_risk,
+                            "dry_run": dry_run,
+                            "post_only": post_only,
+                            "status": "rejected_would_cross",
+                            "error": err,
+                            "best_bid": best_bid,
+                            "best_ask": best_ask,
+                        }
+                        _append_order_log(record)
+                        return {
+                            "status": "rejected_would_cross",
+                            "price": submit_price,
+                            "token_id": token_id,
+                            "error": err,
+                            "best_bid": best_bid,
+                            "best_ask": best_ask,
+                        }
+                    print(
+                        f"  CLAMP: BUY {submit_price:.4f} >= ask {best_ask:.4f}; "
+                        f"using {max_resting:.4f}"
+                    )
+                    submit_price = max_resting
+            elif order_side == Side.SELL and best_bid is not None:
+                min_resting = round(best_bid + tick, 4)
+                if submit_price <= best_bid:
+                    if min_resting >= 1.0:
+                        err = (
+                            f"post-only SELL would cross bid {best_bid} "
+                            f"at {submit_price}"
+                        )
+                        record = {
+                            "timestamp": datetime.now().isoformat(),
+                            "token_id": token_id,
+                            "side": side.upper(),
+                            "price": submit_price,
+                            "size": size,
+                            "tick_size": tick_size,
+                            "neg_risk": neg_risk,
+                            "dry_run": dry_run,
+                            "post_only": post_only,
+                            "status": "rejected_would_cross",
+                            "error": err,
+                            "best_bid": best_bid,
+                            "best_ask": best_ask,
+                        }
+                        _append_order_log(record)
+                        return {
+                            "status": "rejected_would_cross",
+                            "price": submit_price,
+                            "token_id": token_id,
+                            "error": err,
+                            "best_bid": best_bid,
+                            "best_ask": best_ask,
+                        }
+                    print(
+                        f"  CLAMP: SELL {submit_price:.4f} <= bid {best_bid:.4f}; "
+                        f"using {min_resting:.4f}"
+                    )
+                    submit_price = min_resting
+
         order_args = OrderArgs(
             token_id=token_id,
-            price=price,
+            price=submit_price,
             side=order_side,
             size=size,
         )
@@ -938,12 +1024,14 @@ class PolymarketClient:
             "timestamp": datetime.now().isoformat(),
             "token_id": token_id,
             "side": side.upper(),
-            "price": price,
+            "price": submit_price,
             "size": size,
             "tick_size": tick_size,
             "neg_risk": neg_risk,
             "dry_run": dry_run,
             "post_only": post_only,
+            "best_bid": book_bid,
+            "best_ask": book_ask,
         }
 
         try:
@@ -971,9 +1059,11 @@ class PolymarketClient:
                 _append_order_log(record)
                 return {
                     "status": "rejected_would_cross",
-                    "price": price,
+                    "price": submit_price,
                     "token_id": token_id,
                     "error": str(exc),
+                    "best_bid": book_bid,
+                    "best_ask": book_ask,
                 }
             record["status"] = "error"
             record["error"] = str(exc)

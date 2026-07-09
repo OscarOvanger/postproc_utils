@@ -8,6 +8,7 @@ import json
 import sys
 import time
 import warnings
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from datetime import date as date_cls, timedelta
 from pathlib import Path
 from typing import Any
@@ -96,9 +97,16 @@ def ensure_hrrr(city: str, event_date: str) -> bool:
 
     try:
         _init_download_pool(8)
+        pool = ThreadPoolExecutor(max_workers=1)
         try:
-            row = fetch_hrrr_for_date(HRRR_STATIONS[city], target)
+            future = pool.submit(fetch_hrrr_for_date, HRRR_STATIONS[city], target)
+            try:
+                row = future.result(timeout=60)
+            except FuturesTimeout:
+                print(f"  HRRR fetch timed out for {city}/{event_date} (60s)")
+                return False
         finally:
+            pool.shutdown(wait=False, cancel_futures=True)
             _shutdown_download_pool()
         tmax = row.get("hrrr_tmax")
         if tmax is None or (isinstance(tmax, float) and np.isnan(tmax)):
